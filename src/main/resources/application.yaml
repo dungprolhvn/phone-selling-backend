@@ -1,3 +1,20 @@
 spring:
   application:
     name: phone
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    url: ${env.PHONE_DB_URL} # update to ssl later to secure
+    username: ${env.PHONE_DB_USERNAME}
+    password: ${env.PHONE_DB_REDIS_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${env.PHONE_REDIS_URL}
+      port: 6379
+      password: ${env.PHONE_DB_REDIS_PASSWORD}
+  elasticsearch:
+    uris: ${env.ES_URL}
+    username: ${env.PHONE_DB_USERNAME}
+    password: ${env.PHONE_DB_REDIS_PASSWORD}
