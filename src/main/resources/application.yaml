@@ -16,5 +16,8 @@ spring:
       password: ${env.PHONE_DB_REDIS_PASSWORD}
   elasticsearch:
     uris: ${env.ES_URL}
-    username: ${env.PHONE_DB_USERNAME}
-    password: ${env.PHONE_DB_REDIS_PASSWORD}
+    username: ${env.ES_USERNAME}
+    password: ${env.ES_PASSWORD}
+    ssl:
+      truststore-location: classpath:ssl/es-truststore.jks
+      truststore-password: ${env.ES_TRUSTSTORE_PASSWORD}
