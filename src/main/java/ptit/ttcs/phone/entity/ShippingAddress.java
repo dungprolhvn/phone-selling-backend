@@ -35,7 +35,6 @@ public class ShippingAddress {
   private String recipientPhone;
   
   @NotNull
-  @Lob
   @Column(name = "address", nullable = false)
   private String address;
   

@@ -32,8 +32,7 @@ public class Rating {
   @Column(name = "star", nullable = false)
   private Byte star;
   
-  @Lob
-  @Column(name = "comment")
+  @Column(name = "comment", columnDefinition = "TEXT")
   private String comment;
   
   @NotNull
@@ -41,8 +40,7 @@ public class Rating {
   @Column(name = "hidden", nullable = false)
   private Boolean hidden = false;
   
-  @Lob
-  @Column(name = "hideReason")
+  @Column(name = "hideReason", columnDefinition = "TEXT")
   private String hideReason;
   
   @NotNull

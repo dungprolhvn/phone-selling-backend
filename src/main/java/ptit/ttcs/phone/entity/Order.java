@@ -64,14 +64,14 @@ public class Order {
   @Column(name = "trackingNumber", length = 50)
   private String trackingNumber;
   
-  @Lob
-  @Column(name = "cancelReason")
+  @Column(name = "cancelReason", columnDefinition = "TEXT")
   private String cancelReason;
   
   @NotNull
   @ColumnDefault("'PENDING_PAYMENT'")
   @Lob
   @Column(name = "status", nullable = false)
+  @Enumerated(EnumType.STRING)
   private OrderStatus status;
   
   @NotNull

@@ -29,8 +29,7 @@ public class Promo {
   @Column(name = "name", nullable = false)
   private String name;
   
-  @Lob
-  @Column(name = "description")
+  @Column(name = "description", columnDefinition = "TEXT")
   private String description;
   
   @NotNull
@@ -44,6 +43,7 @@ public class Promo {
   @NotNull
   @Lob
   @Column(name = "discountType", nullable = false)
+  @Enumerated(EnumType.STRING)
   private DiscountType discountType;
   
   @NotNull

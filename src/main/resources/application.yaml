@@ -4,20 +4,31 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
   datasource:
-    url: ${env.PHONE_DB_URL} # update to ssl later to secure
-    username: ${env.PHONE_DB_USERNAME}
-    password: ${env.PHONE_DB_REDIS_PASSWORD}
+    url: ${PHONE_DB_URL} # update to ssl later to secure
+    username: ${PHONE_DB_USERNAME}
+    password: ${PHONE_DB_REDIS_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
-      host: ${env.PHONE_REDIS_URL}
+      host: ${PHONE_REDIS_URL}
       port: 6379
-      password: ${env.PHONE_DB_REDIS_PASSWORD}
+      password: ${PHONE_DB_REDIS_PASSWORD}
   elasticsearch:
-    uris: ${env.ES_URL}
-    username: ${env.ES_USERNAME}
-    password: ${env.ES_PASSWORD}
+    uris: ${ES_URL}
+    username: ${ES_USERNAME}
+    password: ${ES_PASSWORD}
     ssl:
       truststore-location: classpath:ssl/es-truststore.jks
-      truststore-password: ${env.ES_TRUSTSTORE_PASSWORD}
+      truststore-password: ${ES_TRUSTSTORE_PASSWORD}
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
+app:
+  jwt:
+    secret: ${PHONE_JWT_SECRET}
+    expiration: 86400000

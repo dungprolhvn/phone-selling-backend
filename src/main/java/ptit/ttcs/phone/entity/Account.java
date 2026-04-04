@@ -44,17 +44,19 @@ public class Account {
   @ColumnDefault("'USER'")
   @Lob
   @Column(name = "role", nullable = false)
+  @Enumerated(EnumType.STRING)
   private AccountRole role;
   
   @NotNull
   @ColumnDefault("'ACTIVE'")
   @Lob
   @Column(name = "status", nullable = false)
+  @Enumerated(EnumType.STRING)
   private AccountStatus status;
   
   @NotNull
   @ColumnDefault("CURRENT_TIMESTAMP")
   @Column(name = "createdAt", nullable = false)
-  private Instant createdAt;
+  private Instant createdAt = Instant.now();
   
 }

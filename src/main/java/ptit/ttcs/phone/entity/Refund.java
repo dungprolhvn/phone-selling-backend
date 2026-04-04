@@ -39,6 +39,7 @@ public class Refund {
   @ColumnDefault("'PENDING'")
   @Lob
   @Column(name = "status", nullable = false)
+  @Enumerated(EnumType.STRING)
   private RefundStatus status;
   
   @NotNull

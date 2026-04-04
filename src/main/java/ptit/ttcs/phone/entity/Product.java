@@ -27,6 +27,7 @@ public class Product {
   @NotNull
   @Lob
   @Column(name = "type", nullable = false)
+  @Enumerated(EnumType.STRING)
   private ProductType type;
   
   @Size(max = 255)
@@ -42,8 +43,7 @@ public class Product {
   @JdbcTypeCode(SqlTypes.JSON)
   private Map<String, Object> specs;
   
-  @Lob
-  @Column(name = "description")
+  @Column(name = "description", columnDefinition = "TEXT")
   private String description;
   
   @Column(name = "releaseDate")
