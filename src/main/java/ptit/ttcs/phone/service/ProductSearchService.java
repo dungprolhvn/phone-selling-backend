@@ -22,6 +22,7 @@ import ptit.ttcs.phone.repository.ProductSearchRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -180,11 +181,23 @@ public class ProductSearchService {
     
     // Extract spec fields from JSON
     if (product.getSpecs() != null) {
-      doc.setStorage((String) product.getSpecs().get("storage"));
-      doc.setRam((String) product.getSpecs().get("ram"));
-      doc.setScreenSize((String) product.getSpecs().get("screenSize"));
-      doc.setScreenType((String) product.getSpecs().get("screenType"));
-      doc.setScanFrequency((String) product.getSpecs().get("scanFrequency"));
+      Map<String, Object> specs = product.getSpecs();
+      doc.setStorage((String) specs.get("Bộ nhớ trong"));
+      doc.setRearCamera((String) specs.get("Camera sau"));
+      doc.setFrontCamera((String) specs.get("Camera trước"));
+      doc.setChipset((String) specs.get("Chipset"));
+      doc.setNfc((String) specs.get("Công nghệ NFC"));
+      doc.setScreenType((String) specs.get("Công nghệ màn hình"));
+      doc.setSensor((String) specs.get("Cảm biến"));
+      doc.setRam((String) specs.get("Dung lượng RAM"));
+      doc.setOs((String) specs.get("Hệ điều hành"));
+      doc.setScreenSize((String) specs.get("Kích thước màn hình"));
+      doc.setCpuType((String) specs.get("Loại CPU"));
+      doc.setBattery((String) specs.get("Pin"));
+      doc.setSim((String) specs.get("Thẻ SIM"));
+      doc.setScreenFeatures((String) specs.get("Tính năng màn hình"));
+      doc.setCompatibility((String) specs.get("Tương thích"));
+      doc.setScreenResolution((String) specs.get("Độ phân giải màn hình"));
     }
     
     // First image for display in search results

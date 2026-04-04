@@ -24,8 +24,8 @@ public class ElasticsearchIndexer implements ApplicationRunner {
   @Override
   public void run(ApplicationArguments args) {
     long count = productSearchRepository.count();
-    
-    if (count > 100) {
+
+    if (count > 0) {
       log.info("Elasticsearch already has {} products — skipping indexing", count);
       return;
     }

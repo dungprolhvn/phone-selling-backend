@@ -51,6 +51,42 @@ public class ProductDocument {
   @Field(type = FieldType.Keyword)
   private String scanFrequency; // "60Hz", "120Hz"
   
+  @Field(type = FieldType.Keyword)
+  private String rearCamera;        // Maps to: "Camera sau"
+  
+  @Field(type = FieldType.Keyword)
+  private String frontCamera;       // Maps to: "Camera trước"
+  
+  @Field(type = FieldType.Keyword)
+  private String chipset;           // Maps to: "Chipset"
+  
+  @Field(type = FieldType.Keyword)
+  private String nfc;               // Maps to: "Công nghệ NFC"
+  
+  @Field(type = FieldType.Keyword)
+  private String sensor;            // Maps to: "Cảm biến"
+  
+  @Field(type = FieldType.Keyword)
+  private String os;                // Maps to: "Hệ điều hành"
+  
+  @Field(type = FieldType.Keyword)
+  private String cpuType;           // Maps to: "Loại CPU"
+  
+  @Field(type = FieldType.Keyword)
+  private String battery;           // Maps to: "Pin"
+  
+  @Field(type = FieldType.Keyword)
+  private String sim;               // Maps to: "Thẻ SIM"
+  
+  @Field(type = FieldType.Keyword)
+  private String screenFeatures;    // Maps to: "Tính năng màn hình"
+  
+  @Field(type = FieldType.Keyword)
+  private String compatibility;     // Maps to: "Tương thích"
+  
+  @Field(type = FieldType.Keyword)
+  private String screenResolution;  // Maps to: "Độ phân giải màn hình"
+  
   @MultiField(
       mainField = @Field(type = FieldType.Text, analyzer = "standard"),
       otherFields = {
