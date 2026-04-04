@@ -23,6 +23,8 @@ spring:
     ssl:
       truststore-location: classpath:ssl/es-truststore.jks
       truststore-password: ${ES_TRUSTSTORE_PASSWORD}
+    connection-timeout: 5s
+    socket-timeout: 30s
 
 logging:
   level:

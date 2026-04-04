@@ -12,6 +12,7 @@ import ptit.ttcs.phone.enums.ProductType;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 @Getter
@@ -51,7 +52,7 @@ public class Product {
   
   @Column(name = "imageUrls")
   @JdbcTypeCode(SqlTypes.JSON)
-  private Map<String, Object> imageUrls;
+  private List<String> imageUrls;
   
   @NotNull
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
