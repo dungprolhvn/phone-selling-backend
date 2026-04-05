@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import ptit.ttcs.phone.entity.Product;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
@@ -13,4 +14,6 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
   
   @Query("SELECT p FROM Product p JOIN FETCH p.brand")
   List<Product> findAllWithBrand();
+  
+  Optional<Product> getProductById(Integer productId);
 }

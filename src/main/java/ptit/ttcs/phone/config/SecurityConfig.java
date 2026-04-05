@@ -29,6 +29,7 @@ public class SecurityConfig {
                 "/api/auth/**",
                 "/api/products/**",
                 "/api/brands/**",
+                "/api/cart/**",
                 "/api/orders/status",
                 // api docs
                 "/v3/api-docs/**",
