@@ -1,18 +1,21 @@
 package ptit.ttcs.phone.controller;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ptit.ttcs.phone.document.ProductDocument;
+import ptit.ttcs.phone.dto.HomeProductResponse;
 import ptit.ttcs.phone.dto.ProductSearchRequest;
+import ptit.ttcs.phone.service.HomePageService;
 import ptit.ttcs.phone.service.ProductSearchService;
 import ptit.ttcs.phone.service.ProductService;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/products")
@@ -21,6 +24,17 @@ import java.util.List;
 public class ProductSearchController {
   private final ProductSearchService searchService;
   private final ProductService productService;
+  private final HomePageService homePageService;
+
+  @GetMapping("/featured")
+  public ResponseEntity<List<HomeProductResponse>> getFeaturedProducts() {
+    return ResponseEntity.ok(homePageService.getFeaturedProducts());
+  }
+
+  @GetMapping("/new-arrivals")
+  public ResponseEntity<List<HomeProductResponse>> getNewArrivals() {
+    return ResponseEntity.ok(homePageService.getNewArrivals());
+  }
   
   @GetMapping("/search")
   public ResponseEntity<List<ProductDocument>> search(@ModelAttribute ProductSearchRequest request) {
