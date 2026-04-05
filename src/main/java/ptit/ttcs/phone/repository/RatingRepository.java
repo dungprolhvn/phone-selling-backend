@@ -1,5 +1,7 @@
 package ptit.ttcs.phone.repository;
 
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,22 +11,22 @@ import ptit.ttcs.phone.entity.Rating;
 
 @Repository
 public interface RatingRepository extends JpaRepository<Rating, Integer> {
-	@Query("""
-			SELECT r.product.id AS productId,
-						 AVG(r.star) AS averageRating,
-						 COUNT(r.id) AS ratingCount
-			FROM Rating r
-			WHERE r.hidden = false
-			GROUP BY r.product.id
-			ORDER BY AVG(r.star) DESC, COUNT(r.id) DESC
-			""")
-	java.util.List<ProductRatingStats> findTopRatedProductStats(Pageable pageable);
+  @Query("""
+      SELECT r.product.id AS productId,
+             AVG(r.star) AS averageRating,
+             COUNT(r.id) AS ratingCount
+      FROM Rating r
+      WHERE r.hidden = false
+      GROUP BY r.product.id
+      ORDER BY AVG(r.star) DESC, COUNT(r.id) DESC
+      """)
+  List<ProductRatingStats> findTopRatedProductStats(Pageable pageable);
 
-	interface ProductRatingStats {
-		Integer getProductId();
+  interface ProductRatingStats {
+    Integer getProductId();
 
-		Double getAverageRating();
+    Double getAverageRating();
 
-		Long getRatingCount();
-	}
+    Long getRatingCount();
+  }
 }

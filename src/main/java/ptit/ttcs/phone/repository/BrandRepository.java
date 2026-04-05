@@ -9,5 +9,5 @@ import ptit.ttcs.phone.entity.Brand;
 
 @Repository
 public interface BrandRepository extends JpaRepository<Brand, Integer> {
-	Page<Brand> findAllByOrderByNameAsc(Pageable pageable);
+  Page<Brand> findAllByOrderByNameAsc(Pageable pageable);
 }
