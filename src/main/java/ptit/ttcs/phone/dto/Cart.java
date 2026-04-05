@@ -26,4 +26,12 @@ public class Cart {
       products.remove(productId);
     }
   }
+  
+  public void merge(Cart guestCart) {
+    if (guestCart.getProducts() != null) {
+      guestCart.getProducts().forEach((productId, count) -> {
+        update(productId, count);
+      });
+    }
+  }
 }
