@@ -34,4 +34,12 @@ public class CartController {
     }
     return ResponseEntity.status(HttpStatus.OK).build();
   }
+  
+  @GetMapping("")
+  public ResponseEntity<Cart> viewCart(
+      @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
+      Authentication authentication) {
+    return ResponseEntity.ok(cartService.getCart(authentication, guestId));
+  }
+  
 }

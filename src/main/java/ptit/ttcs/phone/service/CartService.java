@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -97,5 +98,34 @@ public class CartService {
     // save cart
     String cartJson = objectMapper.writeValueAsString(cart);
     redisTemplate.opsForValue().set(String.format("cart:guest:%s", guestId), cartJson, Duration.ofDays(7));
+  }
+  
+  public Cart getCart(Authentication authentication, String guestId) {
+    String redisKey = resolveRedisKey(authentication, guestId);
+    try {
+      String cartStr = redisTemplate.opsForValue().get(redisKey);
+      return cartStr != null
+          ? objectMapper.readValue(cartStr, Cart.class)
+          : new Cart();
+    } catch (Exception e) {
+      throw new ConflictException(e.getMessage());
+    }
+  }
+  
+  private String resolveRedisKey(Authentication authentication, String guestId) {
+    boolean isLoggedIn = authentication != null
+        && authentication.isAuthenticated()
+        && authentication.getAuthorities().stream()
+        .anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
+    
+    if (isLoggedIn) {
+      Integer userId = (Integer) authentication.getPrincipal();
+      return "cart:user:" + userId;
+    }
+    
+    if (guestId == null || guestId.isBlank()) {
+      throw new BadRequestException("Guest ID is required");
+    }
+    return "cart:guest:" + guestId;
   }
 }
