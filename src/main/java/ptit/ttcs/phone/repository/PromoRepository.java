@@ -12,7 +12,7 @@ import ptit.ttcs.phone.entity.Promo;
 @Repository
 public interface PromoRepository extends JpaRepository<Promo, Integer> {
 	Page<Promo> findByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByCreatedAtDesc(
-			Instant now,
-			Instant now2,
+			Instant startAt,
+			Instant endAt,
 			Pageable pageable);
 }

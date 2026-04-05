@@ -5,9 +5,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Comparator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -71,7 +71,7 @@ public class HomeService {
   private List<HomePageResponse.ProductSummary> loadTopRatedProducts() {
     List<RatingRepository.ProductRatingStats> stats = ratingRepository
         .findTopRatedProductStats(PageRequest.of(0, PRODUCT_LIMIT))
-        .getContent();
+        ;
 
     if (stats.isEmpty()) {
       return List.of();
@@ -81,10 +81,9 @@ public class HomeService {
         .map(RatingRepository.ProductRatingStats::getProductId)
         .toList();
 
-    Map<Integer, Product> productsById = StreamSupport.stream(
-            productRepository.findAllById(productIds).spliterator(),
-            false)
-        .collect(Collectors.toMap(Product::getId, Function.identity()));
+    Map<Integer, Product> productsById = productRepository.findByIdIn(productIds)
+      .stream()
+      .collect(Collectors.toMap(Product::getId, Function.identity()));
 
     return stats.stream()
         .map(stat -> {
@@ -150,11 +149,12 @@ public class HomeService {
     if (values == null || values.isEmpty()) {
       return null;
     }
-    for (Object value : values.values()) {
-      if (value != null) {
-        return value.toString();
-      }
-    }
-    return null;
+    return values.entrySet().stream()
+        .sorted(Comparator.comparing(Map.Entry::getKey))
+        .map(Map.Entry::getValue)
+        .filter(Objects::nonNull)
+        .map(Object::toString)
+        .findFirst()
+        .orElse(null);
   }
 }
