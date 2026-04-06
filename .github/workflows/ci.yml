@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test
+        run: mvn clean verify
+        env:
+        # dummy values are fine
+          PHONE_DB_URL: jdbc:mysql://localhost:3306/test
+          PHONE_DB_USERNAME: test
+          PHONE_DB_REDIS_PASSWORD: test
+          PHONE_REDIS_URL: localhost
+          ES_URL: http://localhost:9200
+          ES_USERNAME: test
+          ES_PASSWORD: test
+          ES_TRUSTSTORE_PASSWORD: test
+          PHONE_JWT_SECRET: dummy-ci-secret-key-must-be-at-least-256-bits-long-enough
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: target/surefire-reports/
