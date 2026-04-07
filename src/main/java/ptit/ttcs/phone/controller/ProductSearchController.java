@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -12,8 +13,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ptit.ttcs.phone.document.ProductDocument;
 import ptit.ttcs.phone.dto.HomeProductResponse;
+import ptit.ttcs.phone.dto.ProductDetailResponse;
 import ptit.ttcs.phone.dto.ProductSearchRequest;
 import ptit.ttcs.phone.service.HomePageService;
+import ptit.ttcs.phone.service.ProductDetailService;
 import ptit.ttcs.phone.service.ProductSearchService;
 import ptit.ttcs.phone.service.ProductService;
 
@@ -25,6 +28,7 @@ public class ProductSearchController {
   private final ProductSearchService searchService;
   private final ProductService productService;
   private final HomePageService homePageService;
+  private final ProductDetailService productDetailService;
 
   @GetMapping("/featured")
   public ResponseEntity<List<HomeProductResponse>> getFeaturedProducts() {
@@ -34,6 +38,11 @@ public class ProductSearchController {
   @GetMapping("/new-arrivals")
   public ResponseEntity<List<HomeProductResponse>> getNewArrivals() {
     return ResponseEntity.ok(homePageService.getNewArrivals());
+  }
+
+  @GetMapping("/{productId}")
+  public ResponseEntity<ProductDetailResponse> getProductDetail(@PathVariable Integer productId) {
+    return ResponseEntity.ok(productDetailService.getProductDetail(productId));
   }
   
   @GetMapping("/search")
