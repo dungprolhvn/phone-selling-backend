@@ -33,6 +33,7 @@ public class SecurityConfig {
                 "/api/brands/**",
                 "/api/cart/**",
                 "/api/orders/status",
+                "/api/payments/vnpay/ipn",
                 // api docs
                 "/v3/api-docs/**",
                 "/swagger-ui/**",

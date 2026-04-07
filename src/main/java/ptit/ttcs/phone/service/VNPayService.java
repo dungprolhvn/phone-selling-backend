@@ -9,9 +9,9 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.time.LocalDateTime;
 
 @Service
@@ -34,69 +34,129 @@ public class VNPayService {
   private String ipnUrl;
   
   public String createPaymentUrl(Integer orderId, BigDecimal amount, String orderInfo, String clientIp) {
-    // VNPay requires amount in VND * 100 (no decimals)
     long vnpayAmount = amount.longValue() * 100;
     
-    // Build params map — must be sorted alphabetically for correct signature
-    Map<String, String> params = new TreeMap<>();
-    params.put("vnp_Version", "2.1.0");
-    params.put("vnp_Command", "pay");
-    params.put("vnp_TmnCode", tmnCode);
-    params.put("vnp_Amount", String.valueOf(vnpayAmount));
-    params.put("vnp_CurrCode", "VND");
-    params.put("vnp_TxnRef", String.valueOf(orderId));   // your order ID
-    params.put("vnp_OrderInfo", orderInfo);              // e.g. "Thanh toan don hang #1001"
-    params.put("vnp_OrderType", "other");
-    params.put("vnp_Locale", "vn");
-    params.put("vnp_ReturnUrl", returnUrl);
-    params.put("vnp_IpnUrl", ipnUrl);
-    params.put("vnp_CreateDate", getCurrentDateTime());  // yyyyMMddHHmmss
-    params.put("vnp_ExpireDate", getExpireDateTime(15)); // 15 min TTL
-    params.put("vnp_IpAddr", clientIp);
+    Map<String, String> vnp_Params = new HashMap<>();
+    vnp_Params.put("vnp_Version", "2.1.0");
+    vnp_Params.put("vnp_Command", "pay");
+    vnp_Params.put("vnp_TmnCode", tmnCode);
+    vnp_Params.put("vnp_Amount", String.valueOf(vnpayAmount));
+    vnp_Params.put("vnp_CurrCode", "VND");
+    vnp_Params.put("vnp_TxnRef", String.valueOf(orderId));
+    vnp_Params.put("vnp_OrderInfo", orderInfo);
+    vnp_Params.put("vnp_OrderType", "other");
+    vnp_Params.put("vnp_Locale", "vn");
+    vnp_Params.put("vnp_ReturnUrl", returnUrl);
     
-    // Build query string for signing
-    String queryString = buildQueryString(params, false);
+    // Ensure IPv4 for localhost testing
+    String ip = clientIp;
+    if (ip == null || ip.equals("0:0:0:0:0:0:0:1")) {
+      ip = "127.0.0.1";
+    }
+    vnp_Params.put("vnp_IpAddr", ip);
     
-    // Sign with HMAC-SHA512
-    String signature = hmacSHA512(hashSecret, queryString);
+    // ==========================================
+    // CRITICAL FIX: STRICTLY USE GMT+7 TIMEZONE
+    // ==========================================
+    Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+    SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
     
-    // Final URL = query string + signature
-    return payUrl + "?" + queryString + "&vnp_SecureHash=" + signature;
+    String vnp_CreateDate = formatter.format(cld.getTime());
+    vnp_Params.put("vnp_CreateDate", vnp_CreateDate);
+    
+    cld.add(Calendar.MINUTE, 15);
+    String vnp_ExpireDate = formatter.format(cld.getTime());
+    vnp_Params.put("vnp_ExpireDate", vnp_ExpireDate);
+    
+    // ==========================================
+    // EXACT VNPAY HASHING & ENCODING LOOP
+    // ==========================================
+    List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+    Collections.sort(fieldNames);
+    
+    StringBuilder hashData = new StringBuilder();
+    StringBuilder query = new StringBuilder();
+    
+    try {
+      Iterator<String> itr = fieldNames.iterator();
+      while (itr.hasNext()) {
+        String fieldName = itr.next();
+        String fieldValue = vnp_Params.get(fieldName);
+        
+        if ((fieldValue != null) && (fieldValue.length() > 0)) {
+          // Build hash data
+          hashData.append(fieldName);
+          hashData.append('=');
+          hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+          
+          // Build query
+          query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString()));
+          query.append('=');
+          query.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+          
+          if (itr.hasNext()) {
+            query.append('&');
+            hashData.append('&');
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("URL encoding failed", e);
+    }
+    
+    String queryUrl = query.toString();
+    String vnp_SecureHash = hmacSHA512(hashSecret, hashData.toString());
+    
+    return payUrl + "?" + queryUrl + "&vnp_SecureHash=" + vnp_SecureHash;
   }
   
   public boolean verifyWebhook(Map<String, String> params) {
-    // Extract and remove signature from params before verifying
-    String receivedHash = params.get("vnp_SecureHash");
-    Map<String, String> paramsWithoutHash = new TreeMap<>(params);
+    String vnp_SecureHash = params.get("vnp_SecureHash");
+    
+    if (vnp_SecureHash == null) {
+      return false;
+    }
+    
+    // VNPay expects hash generation to exclude the secure hash fields
+    Map<String, String> paramsWithoutHash = new HashMap<>(params);
     paramsWithoutHash.remove("vnp_SecureHash");
     paramsWithoutHash.remove("vnp_SecureHashType");
     
-    String queryString = buildQueryString(paramsWithoutHash, false);
-    String expectedHash = hmacSHA512(hashSecret, queryString);
+    // ==========================================
+    // EXACT VNPAY HASHING LOOP FOR VERIFICATION
+    // ==========================================
+    List<String> fieldNames = new ArrayList<>(paramsWithoutHash.keySet());
+    Collections.sort(fieldNames);
     
-    return expectedHash.equalsIgnoreCase(receivedHash);
+    StringBuilder hashData = new StringBuilder();
+    
+    try {
+      Iterator<String> itr = fieldNames.iterator();
+      while (itr.hasNext()) {
+        String fieldName = itr.next();
+        String fieldValue = paramsWithoutHash.get(fieldName);
+        
+        if ((fieldValue != null) && (fieldValue.length() > 0)) {
+          // VNPay only encodes the Value when building the hashData string
+          hashData.append(fieldName);
+          hashData.append('=');
+          hashData.append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
+          
+          if (itr.hasNext()) {
+            hashData.append('&');
+          }
+        }
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("URL encoding failed during verification", e);
+    }
+    
+    String expectedHash = hmacSHA512(hashSecret, hashData.toString());
+    
+    return expectedHash.equalsIgnoreCase(vnp_SecureHash);
   }
   
   // ── PRIVATE HELPERS ───────────────────────────────────────────────────
-  
-  private String buildQueryString(Map<String, String> params, boolean encode) {
-    StringBuilder sb = new StringBuilder();
-    params.forEach((key, value) -> {
-      if (sb.length() > 0) sb.append("&");
-      if (encode) {
-        try {
-          sb.append(URLEncoder.encode(key, StandardCharsets.UTF_8));
-          sb.append("=");
-          sb.append(URLEncoder.encode(value, StandardCharsets.UTF_8));
-        } catch (Exception e) {
-          throw new RuntimeException("URL encoding failed", e);
-        }
-      } else {
-        sb.append(key).append("=").append(value);
-      }
-    });
-    return sb.toString();
-  }
   
   private String hmacSHA512(String key, String data) {
     try {

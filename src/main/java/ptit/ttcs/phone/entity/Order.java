@@ -6,6 +6,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import ptit.ttcs.phone.enums.OrderStatus;
 
 import java.math.BigDecimal;
@@ -54,7 +56,7 @@ public class Order {
   @NotNull
   @ColumnDefault("0")
   @Column(name = "discountAmount", nullable = false, precision = 19)
-  private BigDecimal discountAmount;
+  private BigDecimal discountAmount = new BigDecimal(0.0);
   
   @Size(max = 100)
   @Column(name = "transactionId", length = 100)
@@ -73,13 +75,13 @@ public class Order {
   @Column(name = "status", nullable = false)
   @Enumerated(EnumType.STRING)
   private OrderStatus status;
-  
-  @NotNull
+
+  @CreationTimestamp
   @ColumnDefault("CURRENT_TIMESTAMP")
   @Column(name = "createdAt", nullable = false)
   private Instant createdAt;
   
-  @NotNull
+  @UpdateTimestamp
   @ColumnDefault("CURRENT_TIMESTAMP")
   @Column(name = "updatedAt", nullable = false)
   private Instant updatedAt;
