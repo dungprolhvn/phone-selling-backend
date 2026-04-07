@@ -1,16 +1,20 @@
 package ptit.ttcs.phone.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.antlr.v4.runtime.tree.Tree;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 @Data
 public class Cart {
   
-  private final int MAX_COUNT_PER_PRODUCT = 5;
+  @JsonIgnore // marked for ignore
+  private static final int MAX_COUNT_PER_PRODUCT = 5;
   
   @Size(min = 1, message = "Gio hang khong duoc de trong")
   Map<Integer, Integer> products = new HashMap<>();
@@ -33,5 +37,9 @@ public class Cart {
         update(productId, count);
       });
     }
+  }
+  
+  public TreeMap<Integer, Integer> getSortedProducts() {
+    return new TreeMap<>(products);
   }
 }

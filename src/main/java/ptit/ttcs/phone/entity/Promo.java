@@ -58,7 +58,7 @@ public class Promo {
   @NotNull
   @ColumnDefault("0")
   @Column(name = "usageLimit", nullable = false)
-  private Integer usageLimit;
+  private Integer usageLimit;  // total number of order that can use promo
   
   @NotNull
   @ColumnDefault("0")
