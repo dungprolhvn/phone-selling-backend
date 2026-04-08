@@ -3,6 +3,8 @@ package ptit.ttcs.phone.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -27,4 +29,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
       nativeQuery = true
   )
   List<Order> getUnpaidOrders();
+  
+  @Query("SELECT o FROM Order o JOIN FETCH o.user WHERE o.user.id = :userId ORDER BY o.createdAt DESC")
+  Page<Order> findByUserIdWithDetails(@Param("userId") Integer userId, Pageable pageable);
 }

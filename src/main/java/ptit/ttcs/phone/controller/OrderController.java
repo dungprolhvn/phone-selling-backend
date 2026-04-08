@@ -1,5 +1,6 @@
 package ptit.ttcs.phone.controller;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,8 +20,10 @@ import ptit.ttcs.phone.dto.OrderRequest;
 import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.OrderStatusLookupRequest;
 import ptit.ttcs.phone.dto.OrderStatusResponse;
+import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
 import ptit.ttcs.phone.service.OrderService;
 import ptit.ttcs.phone.service.OrderStatusService;
+import ptit.ttcs.phone.service.OrderHistoryService;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -30,6 +33,7 @@ public class OrderController {
   
   private final OrderService orderService;
   private final OrderStatusService orderStatusService;
+  private final OrderHistoryService orderHistoryService;
   
   @PreAuthorize("hasRole('USER')")
   @PostMapping("/place")
@@ -46,6 +50,17 @@ public class OrderController {
   @GetMapping("/status")
   public ResponseEntity<OrderStatusResponse> lookupOrderStatus(@ModelAttribute @Valid OrderStatusLookupRequest request) {
     return ResponseEntity.ok(orderStatusService.lookupOrderStatus(request.getPhone(), request.getOrderId()));
+  }
+
+  @PreAuthorize("hasRole('USER')")
+  @GetMapping("/history")
+  public ResponseEntity<PurchaseHistoryResponse> getPurchaseHistory(
+    Authentication authentication,
+    Pageable pageable
+  ) {
+    int userId = (int) authentication.getPrincipal();
+    PurchaseHistoryResponse response = orderHistoryService.getPurchaseHistory(userId, pageable);
+    return ResponseEntity.ok(response);
   }
   
   private String getClientIp(HttpServletRequest request) {
