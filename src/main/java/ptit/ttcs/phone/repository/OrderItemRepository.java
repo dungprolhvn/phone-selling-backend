@@ -16,4 +16,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, OrderItemI
 
   @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.product WHERE oi.order.id = :orderId")
   List<OrderItem> findByOrderIdWithProduct(@Param("orderId") Integer orderId);
+  
+  @Query("SELECT COUNT(oi) > 0 FROM OrderItem oi WHERE oi.order.user.id = :userId AND oi.product.id = :productId AND oi.order.status IN ('CONFIRMED', 'SUCCESS')")
+  boolean checkUserPurchasedProduct(@Param("userId") Integer userId, @Param("productId") Integer productId);
 }

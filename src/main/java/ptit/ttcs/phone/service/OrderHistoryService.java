@@ -1,11 +1,14 @@
 package ptit.ttcs.phone.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ptit.ttcs.phone.dto.OrderItemDetailResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryItemResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
@@ -13,9 +16,6 @@ import ptit.ttcs.phone.entity.Order;
 import ptit.ttcs.phone.entity.OrderItem;
 import ptit.ttcs.phone.repository.OrderItemRepository;
 import ptit.ttcs.phone.repository.OrderRepository;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 @Slf4j

@@ -21,9 +21,9 @@ import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.OrderStatusLookupRequest;
 import ptit.ttcs.phone.dto.OrderStatusResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
+import ptit.ttcs.phone.service.OrderHistoryService;
 import ptit.ttcs.phone.service.OrderService;
 import ptit.ttcs.phone.service.OrderStatusService;
-import ptit.ttcs.phone.service.OrderHistoryService;
 
 @RestController
 @RequestMapping("/api/orders")
