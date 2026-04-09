@@ -68,11 +68,10 @@ public class OrderController {
   public ResponseEntity<OrderResponse> cancelOrder(
     Authentication authentication,
     @PathVariable Integer orderId,
-    @RequestBody(required = false) CancelOrderRequest request
+    @RequestBody @Valid CancelOrderRequest request
   ) {
     int userId = (Integer) authentication.getPrincipal();
-    String reason = request != null ? request.getCancelReason() : null;
-    OrderResponse response = orderService.cancelOrder(userId, orderId, reason);
+    OrderResponse response = orderService.cancelOrder(userId, orderId, request.getCancelReason());
     return ResponseEntity.ok(response);
   }
   

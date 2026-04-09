@@ -20,6 +20,7 @@ import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
 import ptit.ttcs.phone.entity.*;
 import ptit.ttcs.phone.enums.DiscountType;
 import ptit.ttcs.phone.enums.OrderStatus;
+import ptit.ttcs.phone.enums.RefundStatus;
 import ptit.ttcs.phone.exception.BadRequestException;
 import ptit.ttcs.phone.exception.ConflictException;
 import ptit.ttcs.phone.exception.ForbiddenException;
@@ -47,6 +48,7 @@ public class OrderService {
   private final ProductRepository productRepository;
   private final OrderRepository orderRepository;
   private final OrderItemRepository orderItemRepository;
+  private final RefundRepository refundRepository;
   private final RedisTemplate<String, String> redisTemplate;
   private final ObjectMapper objectMapper;
   
@@ -204,33 +206,26 @@ public class OrderService {
     Order order = orderRepository.findByIdForUpdate(orderId)
         .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
 
+    OrderStatus previousStatus = order.getStatus();
+
     if (!order.getUser().getId().equals(userId)) {
       throw new ForbiddenException("Ban khong co quyen huy don hang nay");
     }
 
-    if (!isCancellableStatus(order.getStatus())) {
+    if (!isCancellableStatus(previousStatus)) {
       throw new BadRequestException("Don hang khong the huy o trang thai hien tai");
     }
 
     List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
-    for (OrderItem item : items) {
-      Product product = productRepository.getProductByIdForUpdate(item.getProduct().getId())
-          .orElseThrow(() -> new NotFoundException("Khong tim thay san pham: " + item.getProduct().getId()));
-
-      int quantity = item.getQuantity();
-      int newReserved = product.getStockReserved() - quantity;
-      if (newReserved < 0) {
-        throw new ConflictException("Du lieu ton kho khong hop le khi huy don");
-      }
-
-      product.setStockReserved(newReserved);
-      product.setStockAvailable(product.getStockAvailable() + quantity);
-      productRepository.save(product);
-    }
+    rollbackStockForCancellation(items, previousStatus);
 
     order.setStatus(OrderStatus.CANCELLED);
     order.setCancelReason(normalizeCancelReason(cancelReason));
     Order savedOrder = orderRepository.save(order);
+
+    if (previousStatus == OrderStatus.CONFIRMED) {
+      createPendingRefund(savedOrder);
+    }
 
     log.info("User {} cancelled order {}", userId, orderId);
     return new OrderResponse(savedOrder.getId(), null, savedOrder.getStatus());
@@ -239,7 +234,47 @@ public class OrderService {
   // ── HELPERS ───────────────────────────────────────────────────
 
   private boolean isCancellableStatus(OrderStatus status) {
-    return status == OrderStatus.PENDING || status == OrderStatus.PENDING_PAYMENT;
+    return status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED;
+  }
+
+  private void rollbackStockForCancellation(List<OrderItem> items, OrderStatus previousStatus) {
+    for (OrderItem item : items) {
+      Product product = productRepository.getProductByIdForUpdate(item.getProduct().getId())
+          .orElseThrow(() -> new NotFoundException("Khong tim thay san pham: " + item.getProduct().getId()));
+
+      int quantity = item.getQuantity();
+      if (previousStatus == OrderStatus.PENDING) {
+        int newReserved = product.getStockReserved() - quantity;
+        if (newReserved < 0) {
+          throw new ConflictException("Du lieu ton kho khong hop le khi huy don");
+        }
+        product.setStockReserved(newReserved);
+      }
+
+      product.setStockAvailable(product.getStockAvailable() + quantity);
+      productRepository.save(product);
+    }
+  }
+
+  private void createPendingRefund(Order order) {
+    Refund refund = new Refund();
+    refund.setOrder(order);
+    refund.setTransactionId(resolveRefundTransactionId(order));
+    refund.setAmount(order.getTotalAmount().subtract(
+        order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO
+    ));
+    refund.setStatus(RefundStatus.PENDING);
+    refund.setRequestedAt(Instant.now());
+    refundRepository.save(refund);
+
+    log.warn("Order {} cancelled after payment; pending refund record created", order.getId());
+  }
+
+  private String resolveRefundTransactionId(Order order) {
+    if (order.getTransactionId() != null && !order.getTransactionId().isBlank()) {
+      return order.getTransactionId();
+    }
+    return "REFUND_ORDER_" + order.getId();
   }
 
   private String normalizeCancelReason(String cancelReason) {
