@@ -20,4 +20,6 @@ public interface PromoRepository extends JpaRepository<Promo, Integer> {
   boolean isEligibleForPromo(int productId, int promoId);
   
   @Nullable List<Promo> findAll();
+  
+  @Nullable List<Promo> findAllByEndDateAfter(Instant now);
 }

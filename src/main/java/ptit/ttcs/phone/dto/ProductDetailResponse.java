@@ -23,5 +23,5 @@ public class ProductDetailResponse {
   private Boolean inStock;
   private Integer stockAvailable;
   private Double averageRating;
-  private List<ProductReviewResponse> reviews;
+  private List<RatingResponse> reviews;
 }

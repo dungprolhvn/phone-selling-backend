@@ -27,9 +27,11 @@ public class SecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(
+                "/actuator/**",
                 "/api/auth/**",
                 "/api/products/**",
                 "/api/brands",
+                "/api/promotions/ongoing",
                 "/api/brands/**",
                 "/api/cart/**",
                 "/api/orders/status",

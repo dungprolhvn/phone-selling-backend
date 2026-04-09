@@ -1,6 +1,7 @@
 package ptit.ttcs.phone.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.redis.core.RedisTemplate;
@@ -92,6 +93,14 @@ public class RatingService {
     return mapToResponse(rating);
   }
 
+  @Transactional(readOnly = true)
+  public List<RatingResponse> getVisibleRatingsByProductId(Integer productId) {
+    return ratingRepository.findByProductIdAndHiddenFalseOrderByCreatedAtDesc(productId)
+        .stream()
+        .map(this::mapToProductRatingResponse)
+        .toList();
+  }
+
   private void verifyUserPurchasedProduct(Integer userId, Integer productId) {
     boolean hasPurchased = orderItemRepository.checkUserPurchasedProduct(userId, productId);
 
@@ -117,6 +126,15 @@ public class RatingService {
         .hideReason(rating.getHideReason())
         .createdAt(rating.getCreatedAt())
         .updatedAt(rating.getUpdatedAt())
+        .build();
+  }
+
+  private RatingResponse mapToProductRatingResponse(Rating rating) {
+    return RatingResponse.builder()
+        .star(rating.getStar())
+        .userName(rating.getUser().getName())
+        .comment(rating.getComment())
+        .createdAt(rating.getCreatedAt())
         .build();
   }
 }

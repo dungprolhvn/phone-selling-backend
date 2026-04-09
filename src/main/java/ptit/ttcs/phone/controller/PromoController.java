@@ -32,4 +32,8 @@ public class PromoController {
     return ResponseEntity.ok(promoService.createPromo(request));
   }
   
+  @GetMapping("/ongoing")
+  public ResponseEntity<List<Promo>> getOngoingPromos() {
+    return ResponseEntity.ok(promoService.getOngoingPromos());
+  }
 }

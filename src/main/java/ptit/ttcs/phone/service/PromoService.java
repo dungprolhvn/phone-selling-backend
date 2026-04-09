@@ -72,4 +72,8 @@ public class PromoService {
     promoEligibility.setProduct(product);
     return promoEligibility;
   }
+  
+  public @Nullable List<Promo> getOngoingPromos() {
+    return promoRepository.findAllByEndDateAfter(Instant.now());
+  }
 }

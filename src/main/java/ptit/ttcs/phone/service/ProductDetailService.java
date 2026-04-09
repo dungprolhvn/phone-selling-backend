@@ -11,12 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import ptit.ttcs.phone.dto.ProductDetailResponse;
-import ptit.ttcs.phone.dto.ProductReviewResponse;
+import ptit.ttcs.phone.dto.RatingResponse;
 import ptit.ttcs.phone.entity.Product;
-import ptit.ttcs.phone.entity.Rating;
 import ptit.ttcs.phone.exception.NotFoundException;
 import ptit.ttcs.phone.repository.ProductRepository;
-import ptit.ttcs.phone.repository.RatingRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +24,7 @@ public class ProductDetailService {
   private static final Duration PRODUCT_DETAIL_CACHE_TTL = Duration.ofMinutes(10);
 
   private final ProductRepository productRepository;
-  private final RatingRepository ratingRepository;
+  private final RatingService ratingService;
   private final RedisTemplate<String, String> redisTemplate;
   private final ObjectMapper objectMapper;
 
@@ -45,11 +43,7 @@ public class ProductDetailService {
     Product product = productRepository.findDetailById(productId)
         .orElseThrow(() -> new NotFoundException("Khong tim thay san pham"));
 
-    List<ProductReviewResponse> reviews = ratingRepository
-        .findByProductIdAndHiddenFalseOrderByCreatedAtDesc(productId)
-        .stream()
-        .map(this::toReviewResponse)
-        .toList();
+    List<RatingResponse> reviews = ratingService.getVisibleRatingsByProductId(productId);
 
     double averageRating = reviews.stream()
         .mapToInt(r -> r.getStar() == null ? 0 : r.getStar())
@@ -79,13 +73,5 @@ public class ProductDetailService {
     }
 
     return response;
-  }
-
-  private ProductReviewResponse toReviewResponse(Rating rating) {
-    return new ProductReviewResponse(
-        rating.getStar(),
-        rating.getComment(),
-        rating.getCreatedAt()
-    );
   }
 }
