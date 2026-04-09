@@ -1,7 +1,11 @@
 package ptit.ttcs.phone.service;
 
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -20,7 +24,26 @@ import ptit.ttcs.phone.repository.ProductRepository;
 @RequiredArgsConstructor
 @Slf4j
 public class ProductDetailService {
-
+  
+  private static final List<String> SPEC_ORDER = List.of(
+      "Bộ nhớ trong",
+      "Dung lượng RAM",
+      "Chipset",
+      "Loại CPU",
+      "Pin",
+      "Kích thước màn hình",
+      "Công nghệ màn hình",
+      "Độ phân giải màn hình",
+      "Tính năng màn hình",
+      "Camera sau",
+      "Camera trước",
+      "Hệ điều hành",
+      "Thẻ SIM",
+      "Công nghệ NFC",
+      "Cảm biến",
+      "Tương thích"
+  );
+  
   private static final Duration PRODUCT_DETAIL_CACHE_TTL = Duration.ofMinutes(10);
 
   private final ProductRepository productRepository;
@@ -56,7 +79,7 @@ public class ProductDetailService {
         product.getType().name(),
         product.getBasePrice(),
         product.getBrand().getName(),
-        product.getSpecs(),
+        sortSpecs(product.getSpecs()),
         product.getDescription(),
         product.getReleaseDate(),
         product.getImageUrls(),
@@ -73,5 +96,22 @@ public class ProductDetailService {
     }
 
     return response;
+  }
+  
+  private Map<String, Object> sortSpecs(Map<String, Object> specs) {
+    if (specs != null) {
+      return specs.entrySet().stream()
+          .sorted(Comparator.comparingInt(entry -> {
+            int index = SPEC_ORDER.indexOf(entry.getKey());
+            return index == -1 ? Integer.MAX_VALUE : index;
+          }))
+          .collect(Collectors.toMap(
+              Map.Entry::getKey,
+              Map.Entry::getValue,
+              (e1, e2) -> e1,
+              LinkedHashMap::new
+          ));
+    }
+    return null;
   }
 }
