@@ -8,9 +8,15 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 import ptit.ttcs.phone.dto.Cart;
+import ptit.ttcs.phone.dto.OrderItemDetailResponse;
 import ptit.ttcs.phone.dto.OrderRequest;
 import ptit.ttcs.phone.dto.OrderResponse;
+import ptit.ttcs.phone.dto.PurchaseHistoryItemResponse;
+import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
 import ptit.ttcs.phone.entity.*;
 import ptit.ttcs.phone.enums.DiscountType;
 import ptit.ttcs.phone.enums.OrderStatus;
@@ -19,6 +25,7 @@ import ptit.ttcs.phone.repository.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +43,8 @@ public class OrderService {
   private final ShippingAddressRepository shippingAddressRepository;
   private final PromoRepository promoRepository;
   private final ProductRepository productRepository;
+  private final OrderRepository orderRepository;
+  private final OrderItemRepository orderItemRepository;
   private final RedisTemplate<String, String> redisTemplate;
   private final ObjectMapper objectMapper;
   
@@ -142,6 +151,52 @@ public class OrderService {
     return new OrderResponse(savedOrder.getId(), paymentUrl, savedOrder.getStatus());
   }
   
+  @Transactional(readOnly = true)
+  public PurchaseHistoryResponse getPurchaseHistory(Integer userId, Pageable pageable) {
+    Page<Order> orderPage = orderRepository.findByUserIdWithDetails(userId, pageable);
+
+    List<PurchaseHistoryItemResponse> historyItems = new ArrayList<>();
+    for (Order order : orderPage.getContent()) {
+      List<OrderItem> orderItems = orderItemRepository.findByOrderIdWithProduct(order.getId());
+
+      List<OrderItemDetailResponse> itemResponses = orderItems.stream()
+          .map(item -> OrderItemDetailResponse.builder()
+              .productId(item.getProduct().getId())
+              .productName(item.getProduct().getName())
+              .quantity(item.getQuantity())
+              .purchasedAtPrice(item.getPurchasedAtPrice())
+              .brandName(item.getProduct().getBrand() != null ? item.getProduct().getBrand().getName() : "N/A")
+              .thumbnailUrl(item.getProduct().getImageUrls() != null && !item.getProduct().getImageUrls().isEmpty()
+                  ? item.getProduct().getImageUrls().get(0)
+                  : null)
+              .build())
+          .toList();
+
+      PurchaseHistoryItemResponse historyItem = PurchaseHistoryItemResponse.builder()
+          .orderId(order.getId())
+          .orderDate(order.getCreatedAt())
+          .status(order.getStatus().name())
+          .totalAmount(order.getTotalAmount())
+          .discountAmount(order.getDiscountAmount())
+          .paymentMethod(order.getPaymentMethod())
+          .trackingNumber(order.getTrackingNumber())
+          .items(itemResponses)
+          .build();
+
+      historyItems.add(historyItem);
+    }
+
+    return PurchaseHistoryResponse.builder()
+        .content(historyItems)
+        .currentPage(orderPage.getNumber())
+        .totalPages(orderPage.getTotalPages())
+        .totalElements(orderPage.getTotalElements())
+        .pageSize(orderPage.getSize())
+        .hasNext(orderPage.hasNext())
+        .hasPrevious(orderPage.hasPrevious())
+        .build();
+  }
+
   // ── HELPERS ───────────────────────────────────────────────────
   
   private void applyPromo(

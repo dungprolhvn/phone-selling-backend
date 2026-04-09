@@ -23,7 +23,6 @@ import ptit.ttcs.phone.dto.OrderStatusResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
 import ptit.ttcs.phone.service.OrderService;
 import ptit.ttcs.phone.service.OrderStatusService;
-import ptit.ttcs.phone.service.OrderHistoryService;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -33,7 +32,6 @@ public class OrderController {
   
   private final OrderService orderService;
   private final OrderStatusService orderStatusService;
-  private final OrderHistoryService orderHistoryService;
   
   @PreAuthorize("hasRole('USER')")
   @PostMapping("/place")
@@ -58,8 +56,8 @@ public class OrderController {
     Authentication authentication,
     Pageable pageable
   ) {
-    int userId = (int) authentication.getPrincipal();
-    PurchaseHistoryResponse response = orderHistoryService.getPurchaseHistory(userId, pageable);
+    int userId = (Integer) authentication.getPrincipal();
+    PurchaseHistoryResponse response = orderService.getPurchaseHistory(userId, pageable);
     return ResponseEntity.ok(response);
   }
   
