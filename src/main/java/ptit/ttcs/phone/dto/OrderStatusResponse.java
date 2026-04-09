@@ -25,5 +25,5 @@ public class OrderStatusResponse {
   private String recipientName;
   private String recipientPhone;
   private String address;
-  private List<OrderStatusItemResponse> items;
+  private List<OrderItemResponse> items;
 }

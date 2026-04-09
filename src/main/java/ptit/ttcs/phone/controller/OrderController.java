@@ -1,5 +1,6 @@
 package ptit.ttcs.phone.controller;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,6 +20,7 @@ import ptit.ttcs.phone.dto.OrderRequest;
 import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.OrderStatusLookupRequest;
 import ptit.ttcs.phone.dto.OrderStatusResponse;
+import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
 import ptit.ttcs.phone.service.OrderService;
 import ptit.ttcs.phone.service.OrderStatusService;
 
@@ -46,6 +48,17 @@ public class OrderController {
   @GetMapping("/status")
   public ResponseEntity<OrderStatusResponse> lookupOrderStatus(@ModelAttribute @Valid OrderStatusLookupRequest request) {
     return ResponseEntity.ok(orderStatusService.lookupOrderStatus(request.getPhone(), request.getOrderId()));
+  }
+
+  @PreAuthorize("hasRole('USER')")
+  @GetMapping("/history")
+  public ResponseEntity<PurchaseHistoryResponse> getPurchaseHistory(
+    Authentication authentication,
+    Pageable pageable
+  ) {
+    int userId = (Integer) authentication.getPrincipal();
+    PurchaseHistoryResponse response = orderService.getPurchaseHistory(userId, pageable);
+    return ResponseEntity.ok(response);
   }
   
   private String getClientIp(HttpServletRequest request) {

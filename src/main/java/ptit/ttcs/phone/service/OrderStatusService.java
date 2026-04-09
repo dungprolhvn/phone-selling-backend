@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
-import ptit.ttcs.phone.dto.OrderStatusItemResponse;
+import ptit.ttcs.phone.dto.OrderItemResponse;
 import ptit.ttcs.phone.dto.OrderStatusResponse;
 import ptit.ttcs.phone.entity.Order;
 import ptit.ttcs.phone.entity.OrderItem;
@@ -25,7 +25,7 @@ public class OrderStatusService {
     Order order = orderRepository.findByIdAndUserPhone(orderId, phone)
         .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
 
-    List<OrderStatusItemResponse> items = orderItemRepository.findByOrderIdWithProduct(orderId)
+    List<OrderItemResponse> items = orderItemRepository.findByOrderIdWithProduct(orderId)
         .stream()
         .map(this::toItemResponse)
         .toList();
@@ -58,12 +58,12 @@ public class OrderStatusService {
     );
   }
 
-  private OrderStatusItemResponse toItemResponse(OrderItem orderItem) {
-    return new OrderStatusItemResponse(
-        orderItem.getProduct().getId(),
-        orderItem.getProduct().getName(),
-        orderItem.getQuantity().intValue(),
-        orderItem.getPurchasedAtPrice()
-    );
+  private OrderItemResponse toItemResponse(OrderItem orderItem) {
+    return OrderItemResponse.builder()
+        .productId(orderItem.getProduct().getId())
+        .productName(orderItem.getProduct().getName())
+        .quantity(orderItem.getQuantity())
+        .purchasedAtPrice(orderItem.getPurchasedAtPrice())
+        .build();
   }
 }
