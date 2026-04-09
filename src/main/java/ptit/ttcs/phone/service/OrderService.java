@@ -21,6 +21,9 @@ import ptit.ttcs.phone.entity.*;
 import ptit.ttcs.phone.enums.DiscountType;
 import ptit.ttcs.phone.enums.OrderStatus;
 import ptit.ttcs.phone.exception.BadRequestException;
+import ptit.ttcs.phone.exception.ConflictException;
+import ptit.ttcs.phone.exception.ForbiddenException;
+import ptit.ttcs.phone.exception.NotFoundException;
 import ptit.ttcs.phone.repository.*;
 
 import java.math.BigDecimal;
@@ -28,7 +31,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 
 
@@ -197,7 +199,56 @@ public class OrderService {
         .build();
   }
 
+  @Transactional
+  public OrderResponse cancelOrder(Integer userId, Integer orderId, String cancelReason) {
+    Order order = orderRepository.findByIdForUpdate(orderId)
+        .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
+
+    if (!order.getUser().getId().equals(userId)) {
+      throw new ForbiddenException("Ban khong co quyen huy don hang nay");
+    }
+
+    if (!isCancellableStatus(order.getStatus())) {
+      throw new BadRequestException("Don hang khong the huy o trang thai hien tai");
+    }
+
+    List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+    for (OrderItem item : items) {
+      Product product = productRepository.getProductByIdForUpdate(item.getProduct().getId())
+          .orElseThrow(() -> new NotFoundException("Khong tim thay san pham: " + item.getProduct().getId()));
+
+      int quantity = item.getQuantity();
+      int newReserved = product.getStockReserved() - quantity;
+      if (newReserved < 0) {
+        throw new ConflictException("Du lieu ton kho khong hop le khi huy don");
+      }
+
+      product.setStockReserved(newReserved);
+      product.setStockAvailable(product.getStockAvailable() + quantity);
+      productRepository.save(product);
+    }
+
+    order.setStatus(OrderStatus.CANCELLED);
+    order.setCancelReason(normalizeCancelReason(cancelReason));
+    Order savedOrder = orderRepository.save(order);
+
+    log.info("User {} cancelled order {}", userId, orderId);
+    return new OrderResponse(savedOrder.getId(), null, savedOrder.getStatus());
+  }
+
   // ── HELPERS ───────────────────────────────────────────────────
+
+  private boolean isCancellableStatus(OrderStatus status) {
+    return status == OrderStatus.PENDING || status == OrderStatus.PENDING_PAYMENT;
+  }
+
+  private String normalizeCancelReason(String cancelReason) {
+    if (cancelReason == null) {
+      return null;
+    }
+    String trimmed = cancelReason.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
   
   private void applyPromo(
       String promoCode,

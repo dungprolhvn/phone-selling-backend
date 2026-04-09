@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ptit.ttcs.phone.dto.CancelOrderRequest;
 import ptit.ttcs.phone.dto.OrderRequest;
 import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.OrderStatusLookupRequest;
@@ -58,6 +60,19 @@ public class OrderController {
   ) {
     int userId = (Integer) authentication.getPrincipal();
     PurchaseHistoryResponse response = orderService.getPurchaseHistory(userId, pageable);
+    return ResponseEntity.ok(response);
+  }
+
+  @PreAuthorize("hasRole('USER')")
+  @PostMapping("/{orderId}/cancel")
+  public ResponseEntity<OrderResponse> cancelOrder(
+    Authentication authentication,
+    @PathVariable Integer orderId,
+    @RequestBody(required = false) CancelOrderRequest request
+  ) {
+    int userId = (Integer) authentication.getPrincipal();
+    String reason = request != null ? request.getCancelReason() : null;
+    OrderResponse response = orderService.cancelOrder(userId, orderId, reason);
     return ResponseEntity.ok(response);
   }
   
