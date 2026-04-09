@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -36,5 +37,5 @@ public class PurchaseHistoryItemResponse {
   private String trackingNumber;
   
   @JsonProperty("items")
-  private java.util.List<OrderItemDetailResponse> items;
+  private List<OrderItemResponse> items;
 }

@@ -12,7 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import ptit.ttcs.phone.dto.Cart;
-import ptit.ttcs.phone.dto.OrderItemDetailResponse;
+import ptit.ttcs.phone.dto.OrderItemResponse;
 import ptit.ttcs.phone.dto.OrderRequest;
 import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryItemResponse;
@@ -159,8 +159,8 @@ public class OrderService {
     for (Order order : orderPage.getContent()) {
       List<OrderItem> orderItems = orderItemRepository.findByOrderIdWithProduct(order.getId());
 
-      List<OrderItemDetailResponse> itemResponses = orderItems.stream()
-          .map(item -> OrderItemDetailResponse.builder()
+      List<OrderItemResponse> itemResponses = orderItems.stream()
+          .map(item -> OrderItemResponse.builder()
               .productId(item.getProduct().getId())
               .productName(item.getProduct().getName())
               .quantity(item.getQuantity())
