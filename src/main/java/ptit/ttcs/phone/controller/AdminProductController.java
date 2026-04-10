@@ -17,7 +17,7 @@ import ptit.ttcs.phone.dto.ProductRequest;
 import ptit.ttcs.phone.service.AdminProductService;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/admin/products")
 @RequiredArgsConstructor
 public class AdminProductController {
 
@@ -27,14 +27,6 @@ public class AdminProductController {
   @PostMapping
   public ResponseEntity<AdminProductResponse> createProduct(@RequestBody @Valid ProductRequest request) {
     return ResponseEntity.ok(adminProductService.createProduct(request));
-  }
-
-  @PreAuthorize("hasRole('ADMIN')")
-  @PatchMapping("/infoUpdate")
-  public ResponseEntity<AdminProductResponse> updateProductInfo(
-      @RequestParam Integer productId,
-      @RequestBody @Valid ProductRequest request) {
-    return ResponseEntity.ok(adminProductService.updateProductInfo(productId, request));
   }
 
   @PreAuthorize("hasRole('ADMIN')")
