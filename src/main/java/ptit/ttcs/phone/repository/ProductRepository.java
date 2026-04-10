@@ -18,6 +18,10 @@ import ptit.ttcs.phone.entity.Product;
 public interface ProductRepository extends JpaRepository<Product, Integer> {
   List<Product> findByNameContainingIgnoreCase(String keyword);
 
+  boolean existsByNameIgnoreCase(String name);
+
+  boolean existsByNameIgnoreCaseAndIdNot(String name, Integer id);
+
   @EntityGraph(attributePaths = "brand")
   List<Product> findByStockAvailableGreaterThanOrderByUpdatedAtDesc(Integer stockAvailable, Pageable pageable);
 
