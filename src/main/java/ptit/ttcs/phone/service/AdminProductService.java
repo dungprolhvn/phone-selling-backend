@@ -49,7 +49,7 @@ public class AdminProductService {
     product.setUpdatedAt(Instant.now());
 
     Product savedProduct = productRepository.save(product);
-    productSearchService.indexProduct(savedProduct);
+    tryIndexProduct(savedProduct);
     invalidateProductCaches(savedProduct.getId());
 
     log.info("Admin created product {}", savedProduct.getId());
@@ -70,7 +70,7 @@ public class AdminProductService {
     product.setUpdatedAt(Instant.now());
 
     Product savedProduct = productRepository.save(product);
-    productSearchService.indexProduct(savedProduct);
+    tryIndexProduct(savedProduct);
     invalidateProductCaches(savedProduct.getId());
 
     log.info("Admin updated product info {}", savedProduct.getId());
@@ -97,6 +97,14 @@ public class AdminProductService {
       product.setReleaseDate(request.getReleaseDate().atZone(ZoneId.systemDefault()).toInstant());
     } else {
       product.setReleaseDate(null);
+    }
+  }
+
+  private void tryIndexProduct(Product product) {
+    try {
+      productSearchService.indexProduct(product);
+    } catch (Exception e) {
+      log.warn("Failed to index product {} in Elasticsearch, will be indexed on next search fallback: {}", product.getId(), e.getMessage());
     }
   }
 
