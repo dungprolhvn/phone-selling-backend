@@ -66,7 +66,7 @@ public class AdminProductService {
     Brand brand = brandRepository.findById(request.getBrandId())
         .orElseThrow(() -> new NotFoundException("Khong tim thay thuong hieu"));
 
-    mapCommonFields(product, request, brand);
+    patchCommonFields(product, request, brand);
     product.setUpdatedAt(Instant.now());
 
     Product savedProduct = productRepository.save(product);
@@ -97,6 +97,28 @@ public class AdminProductService {
       product.setReleaseDate(request.getReleaseDate().atZone(ZoneId.systemDefault()).toInstant());
     } else {
       product.setReleaseDate(null);
+    }
+  }
+
+  private void patchCommonFields(Product product, ProductRequest request, Brand brand) {
+    product.setName(request.getName().trim());
+    product.setType(request.getType());
+    product.setBasePrice(request.getBasePrice());
+    product.setBrand(brand);
+
+    if (request.getDescription() != null) {
+      product.setDescription(request.getDescription());
+    }
+    if (request.getImageUrls() != null) {
+      product.setImageUrls(request.getImageUrls());
+    }
+    if (request.getSpecs() != null) {
+      Map<String, Object> specs = new HashMap<>();
+      specs.putAll(request.getSpecs());
+      product.setSpecs(specs);
+    }
+    if (request.getReleaseDate() != null) {
+      product.setReleaseDate(request.getReleaseDate().atZone(ZoneId.systemDefault()).toInstant());
     }
   }
 
