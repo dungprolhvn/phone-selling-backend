@@ -34,6 +34,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
           .requestMatchers("/api/products/infoUpdate/**").hasRole("ADMIN")
           .requestMatchers("/api/products/stockUpdate").hasRole("WAREHOUSE_STAFF")
+          .requestMatchers("/api/orders/statusUpdate").hasRole("WAREHOUSE_STAFF")
             .requestMatchers(
                 "/actuator/**",
                 "/api/auth/**",

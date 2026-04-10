@@ -17,6 +17,7 @@ import ptit.ttcs.phone.dto.OrderRequest;
 import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryItemResponse;
 import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
+import ptit.ttcs.phone.dto.WarehouseOrderStatusUpdateRequest;
 import ptit.ttcs.phone.entity.*;
 import ptit.ttcs.phone.enums.DiscountType;
 import ptit.ttcs.phone.enums.OrderStatus;
@@ -201,6 +202,12 @@ public class OrderService {
         .build();
   }
 
+        @Transactional(readOnly = true)
+        public Order getOrderById(Integer orderId) {
+          return orderRepository.findByIdWithDetails(orderId)
+          .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
+        }
+
   @Transactional
   public OrderResponse cancelOrder(Integer userId, Integer orderId, String cancelReason) {
     Order order = orderRepository.findByIdForUpdate(orderId)
@@ -231,7 +238,47 @@ public class OrderService {
     return new OrderResponse(savedOrder.getId(), null, savedOrder.getStatus());
   }
 
+  @Transactional
+  public OrderResponse updateOrderStatusByWarehouse(WarehouseOrderStatusUpdateRequest request) {
+    OrderStatus targetStatus = request.getStatus();
+    Integer orderId = request.getOrderId();
+
+    Order order = orderRepository.findByIdForUpdate(orderId)
+        .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
+
+    OrderStatus currentStatus = order.getStatus();
+    if (!isWarehouseTransitionAllowed(currentStatus, targetStatus)) {
+      throw new BadRequestException(String.format(
+          "Khong the cap nhat trang thai tu %s sang %s",
+          currentStatus,
+          targetStatus
+      ));
+    }
+
+    order.setStatus(targetStatus);
+    if (targetStatus == OrderStatus.CANCELLED) {
+      order.setCancelReason(normalizeCancelReason(request.getCancelReason()));
+      order.setFulfilledAt(Instant.now());
+    }
+    else if (targetStatus == OrderStatus.SUCCESS) {
+      order.setFulfilledAt(Instant.now());
+    }
+
+    Order savedOrder = orderRepository.save(order);
+    return new OrderResponse(savedOrder.getId(), null, savedOrder.getStatus());
+  }
+
   // ── HELPERS ───────────────────────────────────────────────────
+
+  private boolean isWarehouseTransitionAllowed(OrderStatus currentStatus, OrderStatus targetStatus) {
+    if (currentStatus == OrderStatus.PENDING || currentStatus == OrderStatus.PENDING_PAYMENT) {
+      return targetStatus == OrderStatus.DELIVERYING;
+    }
+    if (currentStatus == OrderStatus.DELIVERYING) {
+      return targetStatus == OrderStatus.SUCCESS || targetStatus == OrderStatus.CANCELLED;
+    }
+    return false;
+  }
 
   private boolean isCancellableStatus(OrderStatus status) {
     return status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED;

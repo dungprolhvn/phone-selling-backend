@@ -23,6 +23,9 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
   @Query("SELECT o FROM Order o JOIN FETCH o.user LEFT JOIN FETCH o.shippingAddress WHERE o.id = :orderId AND o.user.phone = :phone")
   Optional<Order> findByIdAndUserPhone(@Param("orderId") Integer orderId, @Param("phone") String phone);
+
+  @Query("SELECT o FROM Order o JOIN FETCH o.user LEFT JOIN FETCH o.shippingAddress LEFT JOIN FETCH o.promo WHERE o.id = :orderId")
+  Optional<Order> findByIdWithDetails(@Param("orderId") Integer orderId);
   
   @Query(
       value = "SELECT * FROM `Order` WHERE status = 'PENDING_PAYMENT' AND paymentInitiatedAt < (NOW() - INTERVAL 15 MINUTE)",
