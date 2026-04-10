@@ -2,10 +2,8 @@ package ptit.ttcs.phone.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import ptit.ttcs.phone.document.ProductDocument;
-import ptit.ttcs.phone.dto.ProductRequest;
 import ptit.ttcs.phone.dto.ProductSearchRequest;
 import ptit.ttcs.phone.entity.Product;
 import ptit.ttcs.phone.repository.ProductRepository;

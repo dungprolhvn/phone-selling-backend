@@ -15,6 +15,7 @@ import ptit.ttcs.phone.dto.AdminProductResponse;
 import ptit.ttcs.phone.dto.ProductRequest;
 import ptit.ttcs.phone.entity.Brand;
 import ptit.ttcs.phone.entity.Product;
+import ptit.ttcs.phone.exception.BadRequestException;
 import ptit.ttcs.phone.exception.ConflictException;
 import ptit.ttcs.phone.exception.NotFoundException;
 import ptit.ttcs.phone.repository.BrandRepository;
@@ -74,6 +75,38 @@ public class AdminProductService {
     invalidateProductCaches(savedProduct.getId());
 
     log.info("Admin updated product info {}", savedProduct.getId());
+    return toAdminProductResponse(savedProduct);
+  }
+
+  @Transactional
+  public AdminProductResponse updateProductStock(Integer productId, ProductRequest request, boolean increase) {
+    Integer amount = request.getStockAvailable();
+    if (amount == null || amount <= 0) {
+      throw new BadRequestException("So luong cap nhat ton kho phai lon hon 0");
+    }
+
+    Product product = productRepository.getProductByIdForUpdate(productId)
+        .orElseThrow(() -> new NotFoundException("Khong tim thay san pham"));
+
+    int currentStock = product.getStockAvailable();
+    int newStock;
+    if (increase) {
+      newStock = currentStock + amount;
+    } else {
+      if (amount > currentStock) {
+        throw new BadRequestException("Khong the tru ton kho vuot qua so luong hien co");
+      }
+      newStock = currentStock - amount;
+    }
+
+    product.setStockAvailable(newStock);
+    product.setUpdatedAt(Instant.now());
+
+    Product savedProduct = productRepository.save(product);
+    tryIndexProduct(savedProduct);
+    invalidateProductCaches(savedProduct.getId());
+
+    log.info("Warehouse updated stock for product {} from {} to {}", productId, currentStock, newStock);
     return toAdminProductResponse(savedProduct);
   }
 
