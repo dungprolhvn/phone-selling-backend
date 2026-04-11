@@ -36,15 +36,14 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
   @Query("SELECT o FROM Order o JOIN FETCH o.user WHERE o.user.id = :userId ORDER BY o.createdAt DESC")
   Page<Order> findByUserIdWithDetails(@Param("userId") Integer userId, Pageable pageable);
   
-  @Query("""
-    SELECT DISTINCT o FROM Order o
-    JOIN FETCH o.orderItems oi
-    LEFT JOIN FETCH o.shippingAddress
-    WHERE o.status IN (
-        ptit.ttcs.phone.enums.OrderStatus.PENDING,
-        ptit.ttcs.phone.enums.OrderStatus.CONFIRMED
-    )
-""")
+  @Query(
+      "SELECT DISTINCT o FROM Order o " +
+      "JOIN FETCH o.orderItems oi " +
+      "LEFT JOIN FETCH o.shippingAddress " +
+      "WHERE o.status IN (" +
+      "ptit.ttcs.phone.enums.OrderStatus.PENDING, " +
+      "ptit.ttcs.phone.enums.OrderStatus.CONFIRMED)"
+  )
   List<Order> getUnconfirmedOrders();
   
 }

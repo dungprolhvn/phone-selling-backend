@@ -23,14 +23,14 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, OrderItemI
     return checkUserPurchasedProduct(userId, productId, List.of(OrderStatus.CONFIRMED, OrderStatus.SUCCESS));
   }
 
-  @Query("""
-      SELECT CASE WHEN COUNT(oi) > 0 THEN true ELSE false END
-      FROM OrderItem oi
-      JOIN oi.order o
-      WHERE o.user.id = :userId
-        AND oi.product.id = :productId
-        AND o.status IN :statuses
-      """)
+  @Query(
+      "SELECT CASE WHEN COUNT(oi) > 0 THEN true ELSE false END " +
+      "FROM OrderItem oi " +
+      "JOIN oi.order o " +
+      "WHERE o.user.id = :userId " +
+      "AND oi.product.id = :productId " +
+      "AND o.status IN :statuses"
+  )
   boolean checkUserPurchasedProduct(
       @Param("userId") Integer userId,
       @Param("productId") Integer productId,
