@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
 import ptit.ttcs.phone.entity.Order;
+import ptit.ttcs.phone.enums.OrderStatus;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Integer> {
@@ -26,7 +27,6 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
 
   @Query("SELECT o FROM Order o JOIN FETCH o.user LEFT JOIN FETCH o.shippingAddress LEFT JOIN FETCH o.promo WHERE o.id = :orderId")
   Optional<Order> findByIdWithDetails(@Param("orderId") Integer orderId);
-  
   @Query(
       value = "SELECT * FROM `Order` WHERE status = 'PENDING_PAYMENT' AND paymentInitiatedAt < (NOW() - INTERVAL 15 MINUTE)",
       nativeQuery = true
@@ -35,4 +35,16 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
   
   @Query("SELECT o FROM Order o JOIN FETCH o.user WHERE o.user.id = :userId ORDER BY o.createdAt DESC")
   Page<Order> findByUserIdWithDetails(@Param("userId") Integer userId, Pageable pageable);
+  
+  @Query("""
+    SELECT DISTINCT o FROM Order o
+    JOIN FETCH o.orderItems oi
+    LEFT JOIN FETCH o.shippingAddress
+    WHERE o.status IN (
+        ptit.ttcs.phone.enums.OrderStatus.PENDING,
+        ptit.ttcs.phone.enums.OrderStatus.CONFIRMED
+    )
+""")
+  List<Order> getUnconfirmedOrders();
+  
 }

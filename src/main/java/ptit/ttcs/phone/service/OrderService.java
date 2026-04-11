@@ -5,19 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
-import ptit.ttcs.phone.dto.Cart;
-import ptit.ttcs.phone.dto.OrderItemResponse;
-import ptit.ttcs.phone.dto.OrderRequest;
-import ptit.ttcs.phone.dto.OrderResponse;
-import ptit.ttcs.phone.dto.PurchaseHistoryItemResponse;
-import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
-import ptit.ttcs.phone.dto.WarehouseOrderStatusUpdateRequest;
+import ptit.ttcs.phone.dto.*;
 import ptit.ttcs.phone.entity.*;
 import ptit.ttcs.phone.enums.DiscountType;
 import ptit.ttcs.phone.enums.OrderStatus;
@@ -370,5 +365,25 @@ public class OrderService {
       order.setDiscountAmount(new BigDecimal(totalDiscountedAmount[0]));
       order.setPromo(promo);
     }
+  }
+  
+  public @Nullable List<Order> getUnconfirmedOrders() {
+    return orderRepository.getUnconfirmedOrders();
+  }
+  
+  @Transactional
+  public void confirmOrder(Integer orderId) {
+    Order order = orderRepository.findByIdForUpdate(orderId)
+        .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
+    boolean isConfirmable = order.getStatus() == OrderStatus.CONFIRMED
+        || order.getStatus() == OrderStatus.PENDING; // Da thanh toan hoac COD
+    if (isConfirmable) {
+      order.setStatus(OrderStatus.DELIVERYING);
+      orderRepository.save(order);
+    }
+    else {
+      throw new BadRequestException("Khong the xac nhan don hang vao luc nay");
+    }
+    return;
   }
 }

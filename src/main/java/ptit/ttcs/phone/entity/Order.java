@@ -12,6 +12,8 @@ import ptit.ttcs.phone.enums.OrderStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -88,5 +90,8 @@ public class Order {
   
   @Column(name = "fulfilledAt")
   private Instant fulfilledAt;
+  
+  @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
+  private List<OrderItem> orderItems = new ArrayList<>();
   
 }

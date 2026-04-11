@@ -16,6 +16,8 @@ import ptit.ttcs.phone.dto.OrderResponse;
 import ptit.ttcs.phone.dto.WarehouseOrderStatusUpdateRequest;
 import ptit.ttcs.phone.service.OrderService;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -36,5 +38,19 @@ public class WarehouseOrderController {
 		return ResponseEntity.ok(orderService.updateOrderStatusByWarehouse(request));
 	}
 
-    
+	@PreAuthorize("hasRole('WAREHOUSE_STAFF')")
+	@GetMapping()
+	public ResponseEntity<List<Order>> getUnconfirmedOrders() {
+		return ResponseEntity.ok(orderService.getUnconfirmedOrders());
+	}
+	
+	@PreAuthorize("hasRole('WAREHOUSE_STAFF')")
+	@PostMapping("/{orderId}/confirm")
+	public ResponseEntity<Void> confirmOrder(
+			@PathVariable  Integer orderId
+	) {
+		orderService.confirmOrder(orderId);
+		return ResponseEntity.ok().build();
+	}
+	
 }
