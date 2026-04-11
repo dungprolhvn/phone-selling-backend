@@ -132,6 +132,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+	<!--		GEMINI LIB-->
+		<dependency>
+			<groupId>com.google.genai</groupId>
+			<artifactId>google-genai</artifactId>
+			<version>1.47.0</version>
+			<scope>compile</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

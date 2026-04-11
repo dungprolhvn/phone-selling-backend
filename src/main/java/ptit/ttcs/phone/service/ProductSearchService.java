@@ -168,6 +168,44 @@ public class ProductSearchService {
         .build();
   }
   
+  public List<ProductDocument> searchByKeywords(List<String> keywords) {
+    if (keywords == null || keywords.isEmpty()) {
+      return List.of();
+    }
+    
+    String combinedKeywords = String.join(" ", keywords);
+    
+    BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+    
+    boolQuery.must(m -> m
+        .multiMatch(mm -> mm
+            .fields("name^3", "description", "brandName", "storage", "ram",
+                "chipset", "screenType", "os", "battery")
+            .query(combinedKeywords)
+            .fuzziness("AUTO")
+        )
+    );
+    
+    // Only return in-stock products for chatbot recommendations
+    boolQuery.filter(f -> f
+        .term(t -> t
+            .field("inStock")
+            .value(true)
+        )
+    );
+    
+    Query searchQuery = NativeQuery.builder()
+        .withQuery(boolQuery.build()._toQuery())
+        .withPageable(PageRequest.of(0, 5))
+        .build();
+    
+    SearchHits<ProductDocument> hits = elasticsearchOperations.search(searchQuery, ProductDocument.class);
+    
+    return hits.stream()
+        .map(SearchHit::getContent)
+        .collect(Collectors.toList());
+  }
+  
   private ProductDocument toDocument(Product product) {
     ProductDocument doc = new ProductDocument();
     doc.setId(String.valueOf(product.getId()));
