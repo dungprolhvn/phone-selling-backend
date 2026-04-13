@@ -66,9 +66,12 @@ public class ChatbotService {
     // goi api gemini
     String chatResponse = "";
     List<String> geminiModels = List.of(
-        "gemini-2.5-flash, gemini-3-flash",
-        "gemini-2.5-pro", "gemini-3.1-flash-lite",
-        "gemini-3.1-pro-preview", "gemini-2.5-flash-lite"
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-pro",
+        "gemini-3-flash",
+        "gemini-2.5-flash",
+         "gemini-3.1-flash-lite",
+         "gemini-2.5-flash-lite"
     );
     for (String model : geminiModels) {
       try {
@@ -76,6 +79,7 @@ public class ChatbotService {
             model,
             prompt,
             null).text();
+        Thread.sleep(250);
         if (chatResponse.length() > 0) {
           break;
         }
@@ -127,12 +131,17 @@ public class ChatbotService {
         so sánh sản phẩm và trả lời các câu hỏi liên quan đến sản phẩm.
         
         Nguyên tắc trả lời:
+        - Từ chối trả lời (punt) bất kỳ câu hỏi nào không liên quan đến lĩnh vực (domain), câu hỏi chứa từ ngữ nhạy cảm 18+.
+        - Những câu hỏi về nhu cầu sử dụng (chơi game, xem phim,...), độ bền,... được xem là liên quan.
         - Chỉ tư vấn về sản phẩm có trong danh sách bên dưới nếu có.
         - Trả lời ngắn gọn, thân thiện, dễ hiểu.
         - Nếu không có sản phẩm phù hợp, hãy thành thật nói không tìm thấy và gợi ý khách tìm kiếm trực tiếp.
         - Không bịa đặt thông tin sản phẩm không có trong dữ liệu.
         - Trả lời bằng tiếng Việt.
-        
+        - Nếu đã tư vấn cho khách hàng 1 sản phẩm,
+        nếu các câu hỏi tiếp theo của khách hàng không (ngầm) thể hiện khách hàng muốn tư vấn sản phẩm khác,
+        trả lời các câu hỏi này dựa trên thông tin sản phẩm đã tư vấn
+        (Sản phẩm này có thể không nằm trong danh sách sản phẩm liên quan nhưng chắc chắn đã có trong danh sách sản phẩm liên quan trong lịch sử hội thoại).
         """);
     
     // ── PRODUCT CONTEXT ───────────────────────────────────────
