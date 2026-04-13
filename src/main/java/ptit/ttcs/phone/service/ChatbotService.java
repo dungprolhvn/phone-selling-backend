@@ -65,10 +65,11 @@ public class ChatbotService {
     String prompt = buildPrompt(turns, relatedProducts, chatMessage);
     // goi api gemini
     String chatResponse = "";
-    List<String> geminiModels = new ArrayList<>();
-    geminiClient.models.list(null).forEach(model -> {
-      geminiModels.add(model.name().get());
-    });
+    List<String> geminiModels = List.of(
+        "gemini-2.5-flash, gemini-3-flash",
+        "gemini-2.5-pro", "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview", "gemini-2.5-flash-lite"
+    );
     for (String model : geminiModels) {
       try {
         chatResponse = geminiClient.models.generateContent(
