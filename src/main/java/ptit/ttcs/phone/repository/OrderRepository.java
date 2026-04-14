@@ -38,7 +38,7 @@ public interface OrderRepository extends JpaRepository<Order, Integer> {
   
   @Query(
       "SELECT DISTINCT o FROM Order o " +
-      "JOIN FETCH o.orderItems oi " +
+      "JOIN FETCH o.orderItems oi JOIN FETCH oi.product p " +
       "LEFT JOIN FETCH o.shippingAddress " +
       "WHERE o.status IN (" +
       "ptit.ttcs.phone.enums.OrderStatus.PENDING, " +

@@ -1,5 +1,6 @@
 package ptit.ttcs.phone.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -19,6 +20,7 @@ public class OrderItem {
   @MapsId("orderId")
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "orderId", nullable = false)
+  @JsonIgnore // avoid loop
   private Order order;
   
   @MapsId("productId")
