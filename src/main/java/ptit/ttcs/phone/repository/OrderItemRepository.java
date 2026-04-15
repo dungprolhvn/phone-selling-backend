@@ -16,7 +16,7 @@ import ptit.ttcs.phone.enums.OrderStatus;
 public interface OrderItemRepository extends JpaRepository<OrderItem, OrderItemId> {
   List<OrderItem> findByOrderId(Integer orderId);
 
-  @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.product WHERE oi.order.id = :orderId")
+  @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.product p JOIN FETCH p.brand WHERE oi.order.id = :orderId")
   List<OrderItem> findByOrderIdWithProduct(@Param("orderId") Integer orderId);
 
   default boolean checkUserPurchasedProduct(Integer userId, Integer productId) {
