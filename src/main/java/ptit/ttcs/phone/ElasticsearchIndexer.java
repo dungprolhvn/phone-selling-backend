@@ -23,7 +23,13 @@ public class ElasticsearchIndexer implements ApplicationRunner {
   
   @Override
   public void run(ApplicationArguments args) {
+    boolean shouldReindex = getBooleanArg(args, "shouldReindex", false);
     long count = productSearchRepository.count();
+
+    if (shouldReindex) {
+      log.info("Reindexing ES forcefully!");
+      reindexAll();
+    }
 
     if (count > 0) {
       log.info("Elasticsearch already has {} products — skipping indexing", count);
@@ -52,4 +58,20 @@ public class ElasticsearchIndexer implements ApplicationRunner {
     
     log.info("Indexing complete — success: {}, failed: {}", success, failed);
   }
+
+  
+  private boolean getBooleanArg(ApplicationArguments args, String name, boolean defaultValue) {
+    if (!args.containsOption(name)) {
+      return defaultValue;
+    }
+
+    List<String> values = args.getOptionValues(name);
+
+    if (values == null || values.isEmpty()) {
+      return true;
+    }
+
+    return Boolean.parseBoolean(values.get(0));
+  }
+
 }

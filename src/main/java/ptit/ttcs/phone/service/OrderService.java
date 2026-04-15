@@ -45,6 +45,7 @@ public class OrderService {
   private final OrderRepository orderRepository;
   private final OrderItemRepository orderItemRepository;
   private final RefundRepository refundRepository;
+  private final ProductSearchService productSearchService;
   private final RedisTemplate<String, String> redisTemplate;
   private final ObjectMapper objectMapper;
   
@@ -260,6 +261,9 @@ public class OrderService {
     }
 
     Order savedOrder = orderRepository.save(order);
+    if (targetStatus == OrderStatus.SUCCESS) {
+      reindexOrderProductsInElasticsearch(savedOrder.getId());
+    }
     return new OrderResponse(savedOrder.getId(), null, savedOrder.getStatus());
   }
 
@@ -277,6 +281,20 @@ public class OrderService {
 
   private boolean isCancellableStatus(OrderStatus status) {
     return status == OrderStatus.PENDING || status == OrderStatus.CONFIRMED;
+  }
+
+  private void reindexOrderProductsInElasticsearch(Integer orderId) {
+    List<OrderItem> items = orderItemRepository.findByOrderIdWithProduct(orderId);
+    for (OrderItem item : items) {
+      Product product = item.getProduct();
+      try {
+        productSearchService.indexProduct(product);
+      } 
+      catch (Exception e) {
+        log.warn("Failed to index product {} after order {} reached SUCCESS: {}",
+            product.getId(), orderId, e.getMessage());
+      }
+    }
   }
 
   private void rollbackStockForCancellation(List<OrderItem> items, OrderStatus previousStatus) {
