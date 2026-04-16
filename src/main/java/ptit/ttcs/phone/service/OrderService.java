@@ -25,10 +25,8 @@ import ptit.ttcs.phone.repository.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.TreeMap;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -39,6 +37,7 @@ public class OrderService {
   private final VNPayService vnPayService;
   private final OrderTransactionService orderTransactionService;
   private final AccountRepository userRepository;
+  private final RatingRepository ratingRepository;
   private final ShippingAddressRepository shippingAddressRepository;
   private final PromoRepository promoRepository;
   private final ProductRepository productRepository;
@@ -159,8 +158,8 @@ public class OrderService {
     List<PurchaseHistoryItemResponse> historyItems = new ArrayList<>();
     for (Order order : orderPage.getContent()) {
       List<OrderItem> orderItems = orderItemRepository.findByOrderIdWithProduct(order.getId());
-
-      List<OrderItemResponse> itemResponses = orderItems.stream()
+      
+      List<OrderItemResponse> itemResponsesWithRatings = orderItems.stream()
           .map(item -> OrderItemResponse.builder()
               .productId(item.getProduct().getId())
               .productName(item.getProduct().getName())
@@ -170,9 +169,14 @@ public class OrderService {
               .thumbnailUrl(item.getProduct().getImageUrls() != null && !item.getProduct().getImageUrls().isEmpty()
                   ? item.getProduct().getImageUrls().get(0)
                   : null)
+              .rating(ratingRepository.findByUserIdAndProductId(userId, item.getProduct().getId())
+                  .map(Rating::getStar)
+                  .orElse((byte) 0))
               .build())
-          .toList();
+          .collect(Collectors.toList());
 
+      
+      
       PurchaseHistoryItemResponse historyItem = PurchaseHistoryItemResponse.builder()
           .orderId(order.getId())
           .orderDate(order.getCreatedAt())
@@ -181,7 +185,7 @@ public class OrderService {
           .discountAmount(order.getDiscountAmount())
           .paymentMethod(order.getPaymentMethod())
           .trackingNumber(order.getTrackingNumber())
-          .items(itemResponses)
+          .itemsWithRating(itemResponsesWithRatings)
           .build();
 
       historyItems.add(historyItem);

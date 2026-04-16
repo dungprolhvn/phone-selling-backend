@@ -32,4 +32,7 @@ public class OrderItemResponse {
 
   @JsonProperty("thumbnailUrl")
   private String thumbnailUrl;
+  
+  
+  private Byte rating;
 }
