@@ -31,4 +31,5 @@ public interface RatingRepository extends JpaRepository<Rating, Integer> {
 
 	@Query("SELECT r FROM Rating r WHERE r.product.id = :productId AND r.hidden = false ORDER BY r.createdAt DESC")
 	List<Rating> findByProductIdAndHiddenFalseOrderByCreatedAtDesc(@Param("productId") Integer productId);
+	
 }
