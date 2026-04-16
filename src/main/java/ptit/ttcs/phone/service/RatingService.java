@@ -131,6 +131,7 @@ public class RatingService {
 
   private RatingResponse mapToProductRatingResponse(Rating rating) {
     return RatingResponse.builder()
+        .ratingId(rating.getId())
         .star(rating.getStar())
         .userName(rating.getUser().getName())
         .comment(rating.getComment())
