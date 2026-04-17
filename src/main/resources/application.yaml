@@ -7,15 +7,17 @@ spring:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
   datasource:
-    url: ${PHONE_DB_URL} # update to ssl later to secure
+    url: ${PHONE_DB_URL}
     username: ${PHONE_DB_USERNAME}
     password: ${PHONE_DB_REDIS_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
   data:
     redis:
       host: ${PHONE_REDIS_URL}
-      port: 6379
+      port: 6380
       password: ${PHONE_DB_REDIS_PASSWORD}
+      ssl:
+        enabled: true
   elasticsearch:
     uris: ${ES_URL}
     username: ${ES_USERNAME}
@@ -25,6 +27,21 @@ spring:
       truststore-password: ${ES_TRUSTSTORE_PASSWORD}
     connection-timeout: 5s
     socket-timeout: 30s
+  ssl:
+    bundle:
+      jks:
+        server:
+          key:
+            alias: springboot-ssl
+          keystore:
+            location: classpath:keystore.p12
+            password: yourKeystorePassword
+            type: PKCS12
+
+server:
+  port: 8443
+  ssl:
+    bundle: server
 
 logging:
   level:
@@ -41,7 +58,7 @@ app:
     tmnCode: ${VNPAY_TMN_CODE}
     hashSecret: ${VNPAY_HASH_SECRET}
     payUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-    returnUrl: http://localhost:3000/payment/result    # e.g. https://yoursite.com/payment/result
+    returnUrl: https://localhost:3000/payment/result    # e.g. https://yoursite.com/payment/result
     ipnUrl: ${VNPAY_IPN_URL}          # your webhook endpoint
 
 
