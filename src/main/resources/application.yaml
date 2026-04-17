@@ -58,7 +58,7 @@ app:
     tmnCode: ${VNPAY_TMN_CODE}
     hashSecret: ${VNPAY_HASH_SECRET}
     payUrl: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-    returnUrl: http://localhost:3000/payment/result    # e.g. https://yoursite.com/payment/result
+    returnUrl: https://localhost:3000/payment/result    # e.g. https://yoursite.com/payment/result
     ipnUrl: ${VNPAY_IPN_URL}          # your webhook endpoint
 
 
