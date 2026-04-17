@@ -10,10 +10,11 @@ import lombok.Data;
 public class RegisterRequest {
   @NotBlank(message = "Email khong duoc bo trong")
   @Email
+  @Size(max = 255, message = "Email khong duoc qua 255 ki tu")
   private String email;
   
   @NotBlank(message = "Ten khong duoc bo trong")
-  @Size(min = 1, max = 1024, message = "Do dai khong qua 1024.")
+  @Size(min = 1, max = 255, message = "Ten khong duoc qua 255 ki tu.")
   private String name;
   
   @Pattern(regexp = "^[0-9]{10}$", message = "So dien thoai khong hop le")

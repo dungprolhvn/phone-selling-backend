@@ -1,5 +1,6 @@
 package ptit.ttcs.phone.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +26,7 @@ public class WarehouseProductController {
   public ResponseEntity<AdminProductResponse> updateProductStock(
       @RequestParam Integer productId,
       @RequestParam(defaultValue = "true") boolean increase,
-      @RequestBody ProductRequest request) {
+      @RequestBody @Valid ProductRequest request) {
     return ResponseEntity.ok(adminProductService.updateProductStock(productId, request, increase));
   }
 }

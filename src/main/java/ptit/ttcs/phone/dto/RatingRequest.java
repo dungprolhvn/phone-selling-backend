@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,6 +26,7 @@ public class RatingRequest {
   @JsonProperty("star")
   private Byte star;
 
+  @Size(max = 5000, message = "Comment must not exceed 5000 characters")
   @JsonProperty("comment")
   private String comment;
 }

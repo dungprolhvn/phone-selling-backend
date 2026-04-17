@@ -16,7 +16,7 @@ public class Cart {
   @JsonIgnore // marked for ignore
   private static final int MAX_COUNT_PER_PRODUCT = 5;
   
-  @Size(min = 1, message = "Gio hang khong duoc de trong")
+  @Size(min = 1, max = 50, message = "Gio hang khong duoc de trong va toi da 50 san pham")
   Map<Integer, Integer> products = new HashMap<>();
   // map<productId, count>, count can be negative (in case of removing item from cart)
   
