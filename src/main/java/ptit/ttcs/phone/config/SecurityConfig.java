@@ -84,7 +84,7 @@ public class SecurityConfig {
     // Allowed origins — your Nuxt dev server and production domain
     config.setAllowedOrigins(List.of(
         "http://localhost:3000",    // Nuxt dev
-        "http://localhost:3001"     // in case you run on alternate port
+        "https://localhost:3000"     // ssl
     ));
     
     // Allowed HTTP methods
