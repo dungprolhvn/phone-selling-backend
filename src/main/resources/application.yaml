@@ -14,8 +14,10 @@ spring:
   data:
     redis:
       host: ${PHONE_REDIS_URL}
-      port: 6379
+      port: 6380
       password: ${PHONE_DB_REDIS_PASSWORD}
+      ssl:
+        enabled: true
   elasticsearch:
     uris: ${ES_URL}
     username: ${ES_USERNAME}
