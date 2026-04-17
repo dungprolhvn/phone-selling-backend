@@ -27,6 +27,21 @@ spring:
       truststore-password: ${ES_TRUSTSTORE_PASSWORD}
     connection-timeout: 5s
     socket-timeout: 30s
+  ssl:
+    bundle:
+      jks:
+        server:
+          key:
+            alias: springboot-ssl
+          keystore:
+            location: classpath:keystore.p12
+            password: yourKeystorePassword
+            type: PKCS12
+
+server:
+  port: 8443
+  ssl:
+    bundle: server
 
 logging:
   level:
