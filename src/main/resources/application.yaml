@@ -7,7 +7,7 @@ spring:
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
   datasource:
-    url: ${PHONE_DB_URL} # update to ssl later to secure
+    url: ${PHONE_DB_URL}
     username: ${PHONE_DB_USERNAME}
     password: ${PHONE_DB_REDIS_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
