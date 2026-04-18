@@ -2,6 +2,7 @@ package ptit.ttcs.phone.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -46,7 +47,7 @@ public class ProductSearchController {
   }
   
   @GetMapping("/search")
-  public ResponseEntity<List<ProductDocument>> search(@ModelAttribute ProductSearchRequest request) {
+  public ResponseEntity<List<ProductDocument>> search(@ModelAttribute @Valid ProductSearchRequest request) {
     try {
       return ResponseEntity.ok(searchService.search(request));
     } catch (Exception e) {

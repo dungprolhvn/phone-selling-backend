@@ -19,6 +19,6 @@ public class OrderRequest {
   @Max(1)
   private int paymentMethod; // 0: online bank, 1: cod
   
-  @Size(max = 1000, message = "Ma giam gia khong hop le")
+  @Size(max = 50, message = "Ma giam gia khong hop le")
   private String promoCode;
 }

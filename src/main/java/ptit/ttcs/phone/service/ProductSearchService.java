@@ -1,29 +1,25 @@
 package ptit.ttcs.phone.service;
 
-import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.MultiMatchQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
-import co.elastic.clients.elasticsearch._types.query_dsl.TermQuery;
-import co.elastic.clients.json.JsonData;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Query;
 import org.springframework.stereotype.Service;
+
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.json.JsonData;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import ptit.ttcs.phone.document.ProductDocument;
 import ptit.ttcs.phone.dto.ProductSearchRequest;
 import ptit.ttcs.phone.entity.Product;
 import ptit.ttcs.phone.repository.ProductSearchRepository;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -226,6 +222,16 @@ public class ProductSearchService {
       doc.setChipset((String) specs.get("Chipset"));
       doc.setNfc((String) specs.get("Công nghệ NFC"));
       doc.setScreenType((String) specs.get("Công nghệ màn hình"));
+      Object scanFrequency = specs.get("Tần số quét");
+      if (scanFrequency == null) {
+        scanFrequency = specs.get("Tần số quét màn hình");
+      }
+      if (scanFrequency == null) {
+        scanFrequency = specs.get("Refresh rate");
+      }
+      if (scanFrequency != null) {
+        doc.setScanFrequency(String.valueOf(scanFrequency));
+      }
       doc.setSensor((String) specs.get("Cảm biến"));
       doc.setRam((String) specs.get("Dung lượng RAM"));
       doc.setOs((String) specs.get("Hệ điều hành"));
