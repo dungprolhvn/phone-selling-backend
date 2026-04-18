@@ -34,7 +34,7 @@ public class ProductRequest {
   @Size(max = 50, message = "Specs must not exceed 50 entries")
   private Map<String, String> specs;      // { "storage": "256GB", "ram": "8GB" }
   
-  @Size(max = 65535, message = "Description must not exceed 65535 characters")
+  @Size(max = 6553500, message = "Description must not exceed 6553500 characters")
   private String description;             // HTML content allowed
   
   private LocalDateTime releaseDate;
