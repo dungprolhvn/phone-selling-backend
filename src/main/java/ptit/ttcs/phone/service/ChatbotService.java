@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import ptit.ttcs.phone.document.ProductDocument;
 import ptit.ttcs.phone.dto.ChatbotConversation;
+import ptit.ttcs.phone.dto.Turn;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -20,23 +21,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ChatbotService {
   
-  private final RedisTemplate redisTemplate;
-  private final ObjectMapper objectMapper;
-  private final ProductSearchService productSearchService;
-  private final Client geminiClient = new Client();
-  
   private static final Set<String> STOPWORDS = Set.of(
       "tôi", "muốn", "mua", "tìm", "cho", "xem", "giá", "bao", "nhiêu",
       "có", "không", "và", "của", "với", "là", "một", "các"
   );
-  
-  public List<String> extractKeywords(String message) {
-    return Arrays.stream(message.toLowerCase().split("\\s+"))
-        .map(w -> w.replaceAll("[^a-z0-9àáảãạăắặẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]", ""))
-        .filter(w -> !w.isBlank() && !STOPWORDS.contains(w) && w.length() > 1)
-        .distinct()
-        .collect(Collectors.toList());
-  }
+  private final RedisTemplate redisTemplate;
+  private final ObjectMapper objectMapper;
+  private final ProductSearchService productSearchService;
+  private final Client geminiClient = new Client();
   
   public String processChatMessage(int userId, @Size(min = 5, max = 65535, message = "Do dai tin nhan khong hop le") String chatMessage) throws Exception {
     String convHistory = "";
@@ -50,7 +42,8 @@ public class ChatbotService {
     if (convHistory != null) {
       try {
         convHistoryObj = objectMapper.readValue(convHistory, ChatbotConversation.class);
-      } catch (JsonProcessingException e) {
+      }
+      catch (JsonProcessingException e) {
         log.warn("Lich su chat bi loi dinh dang, bat dau phien moi: {}", e.getMessage());
       }
     }
@@ -59,9 +52,9 @@ public class ChatbotService {
     // truy van ES
     List<ProductDocument> relatedProducts = productSearchService.searchByKeywords(keywords);
     // xay dung prompt
-    LinkedHashMap<String, String> turns = (convHistoryObj != null)
+    List<Turn> turns = (convHistoryObj != null)
         ? convHistoryObj.getTurns()
-        : new LinkedHashMap<>();
+        : new ArrayList<>();
     String prompt = buildPrompt(turns, relatedProducts, chatMessage);
     // goi api gemini
     String chatResponse = "";
@@ -70,8 +63,8 @@ public class ChatbotService {
         "gemini-2.5-pro",
         "gemini-3-flash",
         "gemini-2.5-flash",
-         "gemini-3.1-flash-lite",
-         "gemini-2.5-flash-lite"
+        "gemini-3.1-flash-lite",
+        "gemini-2.5-flash-lite"
     );
     for (String model : geminiModels) {
       try {
@@ -85,6 +78,7 @@ public class ChatbotService {
         }
       }
       catch (Exception e) {
+        e.printStackTrace();
         continue;
       }
     }
@@ -94,12 +88,11 @@ public class ChatbotService {
     // cap nhat lich su chat
     if (convHistoryObj == null) {
       convHistoryObj = new ChatbotConversation();
-      convHistoryObj.setTurns(new LinkedHashMap<>());
+      convHistoryObj.setTurns(new ArrayList<>());
     }
     
     turns = convHistoryObj.getTurns();
-    turns.put("user", chatMessage);
-    turns.put("assistant", chatResponse);
+    turns.add(new Turn(chatMessage, chatResponse));
     
     try {
       String updatedHistory = objectMapper.writeValueAsString(convHistoryObj);
@@ -117,80 +110,95 @@ public class ChatbotService {
     return chatResponse;
   }
   
+  public List<String> extractKeywords(String message) {
+    return Arrays.stream(message.toLowerCase().split("\\s+"))
+        .map(w -> w.replaceAll("[^a-z0-9àáảãạăắặẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]", ""))
+        .filter(w -> !w.isBlank() && !STOPWORDS.contains(w) && w.length() > 1)
+        .distinct()
+        .collect(Collectors.toList());
+  }
+  
   public String buildPrompt(
-      LinkedHashMap<String, String> chatHistory,
+      List<Turn> chatHistory,
       List<ProductDocument> products,
       String userMessage
   ) {
     StringBuilder prompt = new StringBuilder();
     
     // ── SYSTEM ROLE ───────────────────────────────────────────
+    // ── SYSTEM ROLE ───────────────────────────────────────────
     prompt.append("""
         Bạn là trợ lý tư vấn mua hàng của PHONEix - cửa hàng điện thoại và phụ kiện trực tuyến.
-        Nhiệm vụ của bạn là giúp khách hàng tìm sản phẩm phù hợp, tư vấn thông số kỹ thuật,
-        so sánh sản phẩm và trả lời các câu hỏi liên quan đến sản phẩm.
+        Nhiệm vụ: giúp khách tìm sản phẩm, tư vấn thông số, so sánh và trả lời câu hỏi liên quan đến điện thoại/phụ kiện.
         
-        Nguyên tắc trả lời:
-        - Từ chối trả lời (punt) bất kỳ câu hỏi nào không liên quan đến lĩnh vực (domain), câu hỏi chứa từ ngữ nhạy cảm 18+.
-        - Những câu hỏi về nhu cầu sử dụng (chơi game, xem phim,...), độ bền,... được xem là liên quan.
-        - Chỉ tư vấn về sản phẩm có trong danh sách bên dưới nếu có.
-        - Trả lời ngắn gọn, thân thiện, dễ hiểu.
-        - Nếu không có sản phẩm phù hợp, hãy thành thật nói không tìm thấy và gợi ý khách tìm kiếm trực tiếp.
-        - Không bịa đặt thông tin sản phẩm không có trong dữ liệu.
-        - Trả lời bằng tiếng Việt.
-        - Nếu đã tư vấn cho khách hàng 1 sản phẩm,
-        nếu các câu hỏi tiếp theo của khách hàng không (ngầm) thể hiện khách hàng muốn tư vấn sản phẩm khác,
-        trả lời các câu hỏi này dựa trên thông tin sản phẩm đã tư vấn
-        (Sản phẩm này có thể không nằm trong danh sách sản phẩm liên quan nhưng chắc chắn đã có trong danh sách sản phẩm liên quan trong lịch sử hội thoại).
+        === QUY TẮC TRẢ LỜI ===
+        
+        [PHẠM VI]
+        - CHỈ trả lời các câu hỏi liên quan đến điện thoại, phụ kiện, nhu cầu sử dụng (gaming, chụp ảnh, xem phim...).
+        - TỪ CHỐI lịch sự nếu câu hỏi ngoài phạm vi hoặc chứa nội dung 18+.
+        
+        [SẢN PHẨM]
+        - Chỉ tư vấn sản phẩm có trong danh sách bên dưới. TUYỆT ĐỐI không bịa thông tin.
+        - Nếu không tìm thấy sản phẩm phù hợp, thành thật thông báo và gợi ý khách dùng thanh tìm kiếm.
+        - Nếu khách đang hỏi tiếp về sản phẩm đã tư vấn trước đó (thấy trong lịch sử), ưu tiên dùng thông tin đó dù sản phẩm không còn trong danh sách bên dưới.
+        
+        [ĐỊNH DẠNG LINK SẢN PHẨM]
+        - Khi đề cập sản phẩm, BẮT BUỘC dùng markdown link: [Tên sản phẩm](/products/{id})
+        - Ví dụ: Mình gợi ý [iPhone 15 Pro Max](/products/42) vì camera rất xuất sắc.
+        - KHÔNG được tự bịa ID. Chỉ dùng ID từ danh sách sản phẩm bên dưới.
+        
+        [PHONG CÁCH]
+        - Ngắn gọn, thân thiện, dễ hiểu. Trả lời bằng tiếng Việt.
+        
+        ======================
+        
         """);
     
+    // ── PRODUCT CONTEXT ───────────────────────────────────────
     // ── PRODUCT CONTEXT ───────────────────────────────────────
     if (!products.isEmpty()) {
       prompt.append("=== SẢN PHẨM LIÊN QUAN ===\n");
       for (int i = 0; i < products.size(); i++) {
         ProductDocument p = products.get(i);
-        prompt.append(String.format("""
-                [Sản phẩm %d]
-                Tên: %s
-                Thương hiệu: %s
-                Giá: %,.0f VND
-                Loại: %s
-                RAM: %s | Bộ nhớ: %s | Chipset: %s
-                Màn hình: %s (%s)
-                Camera sau: %s | Camera trước: %s
-                Pin: %s | Hệ điều hành: %s
-                Còn hàng: %s
-                
-                """,
+        StringBuilder specs = new StringBuilder();
+        if (p.getRam() != null) specs.append("RAM: ").append(p.getRam()).append(" | ");
+        if (p.getStorage() != null) specs.append("Bộ nhớ: ").append(p.getStorage()).append(" | ");
+        if (p.getChipset() != null) specs.append("Chipset: ").append(p.getChipset()).append(" | ");
+        if (p.getScreenType() != null) specs.append("Màn hình: ").append(p.getScreenType());
+        if (p.getScreenSize() != null) specs.append("(").append(p.getScreenSize()).append(")");
+        if (p.getRearCamera() != null) specs.append(" | Camera sau: ").append(p.getRearCamera());
+        if (p.getFrontCamera() != null) specs.append(" | Camera trước: ").append(p.getFrontCamera());
+        if (p.getBattery() != null) specs.append(" | Pin: ").append(p.getBattery());
+        if (p.getOs() != null) specs.append(" | HĐH: ").append(p.getOs());
+        
+        prompt.append(String.format(
+            "[%d] [%s](/products/%s) — %s — %,.0f VND — %s\n%s\n\n",
             i + 1,
-            p.getName(),
+            p.getName(), p.getId(),
             p.getBrandName(),
             p.getBasePrice(),
-            p.getType(),
-            nvl(p.getRam()), nvl(p.getStorage()), nvl(p.getChipset()),
-            nvl(p.getScreenType()), nvl(p.getScreenSize()),
-            nvl(p.getRearCamera()), nvl(p.getFrontCamera()),
-            nvl(p.getBattery()), nvl(p.getOs()),
-            p.getInStock() ? "Còn hàng" : "Hết hàng"
+            p.getInStock() ? "Còn hàng" : "Hết hàng",
+            specs
         ));
       }
       prompt.append("==========================\n\n");
-    } else {
+    }
+    else {
       prompt.append("""
-            === SẢN PHẨM LIÊN QUAN ===
-            Không tìm thấy sản phẩm phù hợp trong hệ thống.
-            ==========================
-            
-            """);
+          === SẢN PHẨM LIÊN QUAN ===
+          Không tìm thấy sản phẩm phù hợp.
+          ==========================
+          
+          """);
     }
     
     // ── CHAT HISTORY ──────────────────────────────────────────
     if (!chatHistory.isEmpty()) {
       prompt.append("=== LỊCH SỬ HỘI THOẠI ===\n");
-      chatHistory.forEach((role, content) ->
+      chatHistory.forEach(turn ->
           prompt.append(String.format("[%s]: %s\n",
-              role.equalsIgnoreCase("user") ? "Khách" : "Trợ lý",
-              content))
+              turn.getRole().equalsIgnoreCase("user") ? "Khách" : "Trợ lý",
+              turn.getContent()))
       );
       prompt.append("==========================\n\n");
     }
