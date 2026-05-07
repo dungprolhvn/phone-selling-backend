@@ -22,8 +22,7 @@ import ptit.ttcs.phone.service.OrderService;
 import ptit.ttcs.phone.service.OrderStatusService;
 import ptit.ttcs.phone.service.WarrantyService;
 
-import java.time.Instant;
-import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -76,10 +75,11 @@ public class OrderController {
   }
   
   @GetMapping("/{orderId}/warrantyCheck")
-  public ResponseEntity<Map<OrderItemResponse, Instant>> warrantyCheck(
+  public ResponseEntity<List<WarrantyItemResponse>> warrantyCheck(
+      Authentication authentication,
       @PathVariable("orderId") int orderId
   ) {
-    return warrantyService.checkWarranty(orderId);
+    return warrantyService.checkWarranty((int) authentication.getPrincipal(), orderId);
   }
   
   private String getClientIp(HttpServletRequest request) {

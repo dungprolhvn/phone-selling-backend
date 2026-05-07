@@ -1,10 +1,9 @@
 package ptit.ttcs.phone.service;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -12,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 import ptit.ttcs.phone.dto.OrderItemResponse;
+import ptit.ttcs.phone.dto.WarrantyItemResponse;
 import ptit.ttcs.phone.entity.Order;
 import ptit.ttcs.phone.entity.OrderItem;
 import ptit.ttcs.phone.enums.OrderStatus;
@@ -28,9 +28,13 @@ public class WarrantyService {
   private final OrderItemRepository orderItemRepository;
 
   @Transactional(readOnly = true)
-  public ResponseEntity<Map<OrderItemResponse, Instant>> checkWarranty(int orderId) {
+  public ResponseEntity<List<WarrantyItemResponse>> checkWarranty(int reqUserId, int orderId) {
     Order order = orderRepository.findByIdWithDetails(orderId)
         .orElseThrow(() -> new NotFoundException("Khong tim thay don hang"));
+
+    if (reqUserId != order.getUser().getId()) {
+      throw new NotFoundException("Khong tim thay don hang cua ban"); // increase security
+    }
 
     Instant fulfilledAt = order.getFulfilledAt();
     if (fulfilledAt == null || order.getStatus() != OrderStatus.SUCCESS) {
@@ -38,14 +42,19 @@ public class WarrantyService {
     }
 
     List<OrderItem> items = orderItemRepository.findByOrderIdWithProduct(orderId);
-    Map<OrderItemResponse, Instant> result = new LinkedHashMap<>();
+    List<WarrantyItemResponse> result = new ArrayList<>();
     for (OrderItem item : items) {
       Short warrantyMonth = item.getProduct().getWarrantyMonth();
       int warrantyMonths = warrantyMonth != null 
         ? warrantyMonth 
         : (item.getProduct().getType() == ProductType.PHONE ? 12 : 3);
-      Instant warrantyEnd = fulfilledAt.plus(warrantyMonths, ChronoUnit.MONTHS);
-      result.put(toItemResponse(item), warrantyEnd);
+      Instant warrantyEnd = fulfilledAt.atZone(ZoneOffset.UTC)
+          .plusMonths(warrantyMonths)
+          .toInstant();
+      result.add(WarrantyItemResponse.builder()
+          .item(toItemResponse(item))
+          .warrantyEnd(warrantyEnd)
+          .build());
     }
 
     return ResponseEntity.ok(result);
