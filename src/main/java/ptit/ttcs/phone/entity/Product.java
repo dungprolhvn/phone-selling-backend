@@ -68,6 +68,9 @@ public class Product {
   @ColumnDefault("0")
   @Column(name = "stockReserved", nullable = false)
   private Integer stockReserved;
+
+  @Column(name = "warrantyMonth", columnDefinition = "SMALLINT")
+  private Short warrantyMonth;
   
   @NotNull
   @ColumnDefault("CURRENT_TIMESTAMP")

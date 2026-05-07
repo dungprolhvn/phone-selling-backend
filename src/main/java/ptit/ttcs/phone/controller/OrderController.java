@@ -17,14 +17,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import ptit.ttcs.phone.dto.CancelOrderRequest;
-import ptit.ttcs.phone.dto.OrderRequest;
-import ptit.ttcs.phone.dto.OrderResponse;
-import ptit.ttcs.phone.dto.OrderStatusLookupRequest;
-import ptit.ttcs.phone.dto.OrderStatusResponse;
-import ptit.ttcs.phone.dto.PurchaseHistoryResponse;
+import ptit.ttcs.phone.dto.*;
 import ptit.ttcs.phone.service.OrderService;
 import ptit.ttcs.phone.service.OrderStatusService;
+import ptit.ttcs.phone.service.WarrantyService;
+
+import java.time.Instant;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -34,6 +33,7 @@ public class OrderController {
   
   private final OrderService orderService;
   private final OrderStatusService orderStatusService;
+  private final WarrantyService warrantyService;
   
   @PreAuthorize("hasRole('USER')")
   @PostMapping("/place")
@@ -73,6 +73,13 @@ public class OrderController {
     int userId = (Integer) authentication.getPrincipal();
     OrderResponse response = orderService.cancelOrder(userId, orderId, request.getCancelReason());
     return ResponseEntity.ok(response);
+  }
+  
+  @GetMapping("/{orderId}/warrantyCheck")
+  public ResponseEntity<Map<OrderItemResponse, Instant>> warrantyCheck(
+      @PathVariable("orderId") int orderId
+  ) {
+    return warrantyService.checkWarranty(orderId);
   }
   
   private String getClientIp(HttpServletRequest request) {
