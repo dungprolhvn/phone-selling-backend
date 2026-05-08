@@ -177,32 +177,36 @@ public class ProductSearchService {
       excludeSet.add(phone.getId());
     }
 
+    int caseCount = (int) Math.ceil(k / 3.0);
+    int chargerCount = (int) Math.ceil((k - caseCount) / 2.0);
+    int cableCount = k - caseCount - chargerCount;
+
     List<ProductDocument> combined = new ArrayList<>();
-    combined.addAll(searchCaseRecommendations(phone, k, excludeSet));
+    
+    // CASES
+    List<ProductDocument> cases = searchAccessoriesByType(phone, "CASE", caseCount, excludeSet);
+    combined.addAll(cases);
+    cases.forEach(doc -> {
+      if (doc.getMysqlId() != null) excludeSet.add(doc.getMysqlId());
+    });
 
-    if (combined.size() < k) {
-      combined.addAll(searchPowerAccessoryRecommendations(phone, k - combined.size(), excludeSet));
-    }
+    // CHARGERS 
+    int remainingForCharger = chargerCount + (caseCount - cases.size());
+    List<ProductDocument> chargers = searchAccessoriesByType(phone, "CHARGER", remainingForCharger, excludeSet);
+    combined.addAll(chargers);
+    chargers.forEach(doc -> {
+      if (doc.getMysqlId() != null) excludeSet.add(doc.getMysqlId());
+    });
 
-    Map<String, ProductDocument> deduped = new LinkedHashMap<>();
-    for (ProductDocument doc : combined) {
-      if (doc == null) {
-        continue;
-      }
-      Integer mysqlId = doc.getMysqlId();
-      if (mysqlId != null && excludeSet.contains(mysqlId)) {
-        continue;
-      }
-      deduped.putIfAbsent(doc.getId(), doc);
-      if (mysqlId != null) {
-        excludeSet.add(mysqlId);
-      }
-      if (deduped.size() >= k) {
-        break;
-      }
-    }
+    // CABLES
+    int remainingForCable = k - combined.size();
+    List<ProductDocument> cables = searchAccessoriesByType(phone, "CABLE", remainingForCable, excludeSet);
+    combined.addAll(cables);
+    cables.forEach(doc -> {
+      if (doc.getMysqlId() != null) excludeSet.add(doc.getMysqlId());
+    });
 
-    return new ArrayList<>(deduped.values());
+    return combined;
   }
 
   // ── QUERY BUILDER ─────────────────────────────────────────
@@ -464,69 +468,120 @@ public class ProductSearchService {
     return doc;
   }
 
-  private List<ProductDocument> searchCaseRecommendations(Product phone, int k, Set<Integer> excludeIds) {
-    if (k <= 0) {
-      return List.of();
-    }
-
-    BoolQuery.Builder boolQuery = new BoolQuery.Builder();
-    addTypeFilter(boolQuery, List.of("CASE"));
-    addMustNotIds(boolQuery, excludeIds);
-
-    boolean hasShould = false;
-    String phoneName = normalizePhoneNameForAccessory(phone.getName());
-    if (phoneName != null) {
-      boolQuery.should(s -> s
-        .match(m -> m
-          .field("name")
-          .query(phoneName)
-          .minimumShouldMatch("60%")
-          .boost(4.0f)
-        )
-      );
-      boolQuery.should(s -> s
-        .wildcard(w -> w
-          .field("specs.compatibleWith")
-          .value("*" + phoneName + "*")
-          .caseInsensitive(true)
-          .boost(5.0f)
-        )
-      );
-      hasShould = true;
-    }
-
-    if (hasShould) {
-      boolQuery.minimumShouldMatch("1");
-    }
-
-    return executeSearch(boolQuery, k);
-  }
-
-  private List<ProductDocument> searchPowerAccessoryRecommendations(Product phone, int k, Set<Integer> excludeIds) {
+  private List<ProductDocument> searchAccessoriesByType(Product phone, String type, int k, Set<Integer> excludeIds) {
     if (k <= 0) {
       return List.of();
     }
 
     Map<String, Object> specs = phone.getSpecs() != null ? phone.getSpecs() : Map.of();
-    String chargingPower = getFirstSpec(specs, "Công suất sạc", "Công suất");
-    String outputCurrent = getFirstSpec(specs, "Dòng điện ra", "Dòng điện");
-    String output = getSpec(specs, "Đầu ra");
-
     BoolQuery.Builder boolQuery = new BoolQuery.Builder();
-    addTypeFilter(boolQuery, List.of("CHARGER", "CABLE"));
+    addTypeFilter(boolQuery, List.of(type));
     addMustNotIds(boolQuery, excludeIds);
 
     boolean hasShould = false;
-    hasShould |= addShouldTerm(boolQuery, "specs.chargingPower", chargingPower, 5.0f);
-    hasShould |= addShouldTerm(boolQuery, "specs.outputCurrent", outputCurrent, 3.0f);
-    hasShould |= addShouldTerm(boolQuery, "specs.output", output, 2.0f);
 
-    if (!hasShould) {
-      return List.of();
+    if ("CASE".equals(type)) {
+      String phoneName = normalizePhoneNameForAccessory(phone.getName());
+      if (phoneName != null) {
+        boolQuery.should(s -> s
+          .matchPhrase(m -> m
+            .field("name")
+            .query(phoneName)
+            .boost(10.0f)
+          )
+        );
+        boolQuery.should(s -> s
+          .match(m -> m
+            .field("name")
+            .query(phoneName)
+            .minimumShouldMatch("2<70%")
+            .boost(4.0f)
+          )
+        );
+        boolQuery.should(s -> s
+          .matchPhrase(m -> m
+            .field("specs.compatibleWith")
+            .query(phoneName)
+            .boost(8.0f)
+          )
+        );
+        hasShould = true;
+      }
+    } else if ("CHARGER".equals(type) || "CABLE".equals(type)) {
+      String maxCharging = getFirstSpec(specs, "Hỗ trợ sạc tối đa", "Hỗ trợ sạc", "Sạc pin", "Công suất sạc", "Công suất");
+      String port = getFirstSpec(specs, "Cổng kết nối/sạc", "Cổng sạc", "Cổng kết nối");
+      String brand = phone.getBrand() != null ? phone.getBrand().getName() : null;
+
+      if (brand != null) {
+        // Boost accessories with same brand
+        hasShould |= addShouldTerm(boolQuery, "brandName", brand, 3.0f);
+      }
+      
+      if (maxCharging != null) {
+        boolQuery.should(s -> s
+          .match(m -> m
+            .field("specs.chargingPower")
+            .query(maxCharging)
+            .boost(5.0f)
+          )
+        );
+        boolQuery.should(s -> s
+          .match(m -> m
+            .field("name")
+            .query(maxCharging)
+            .boost(3.0f)
+          )
+        );
+        hasShould = true;
+      }
+      
+      if (port != null && "CABLE".equals(type)) {
+        boolQuery.should(s -> s
+          .match(m -> m
+            .field("specs.output")
+            .query(port)
+            .boost(5.0f)
+          )
+        );
+        boolQuery.should(s -> s
+          .match(m -> m
+            .field("specs.cableType")
+            .query(port)
+            .boost(4.0f)
+          )
+        );
+        hasShould = true;
+      }
     }
 
-    boolQuery.minimumShouldMatch("1");
-    return executeSearch(boolQuery, k);
+    if (hasShould && "CASE".equals(type)) {
+      boolQuery.minimumShouldMatch("1");
+    }
+
+    List<ProductDocument> results = new ArrayList<>(executeSearch(boolQuery, k));
+
+    if (results.size() < k) {
+      int remaining = k - results.size();
+      Set<Integer> newExcludes = new HashSet<>();
+      if (excludeIds != null) newExcludes.addAll(excludeIds);
+      for (ProductDocument doc : results) {
+        if (doc.getMysqlId() != null) newExcludes.add(doc.getMysqlId());
+      }
+
+      BoolQuery.Builder fallbackQuery = new BoolQuery.Builder();
+      addTypeFilter(fallbackQuery, List.of(type));
+      addMustNotIds(fallbackQuery, newExcludes);
+
+      Query fallbackSearchQuery = NativeQuery.builder()
+          .withQuery(fallbackQuery.build()._toQuery())
+          .withPageable(PageRequest.of(0, remaining, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "basePrice")))
+          .build();
+
+      SearchHits<ProductDocument> fallbackHits = elasticsearchOperations.search(fallbackSearchQuery, ProductDocument.class);
+      results.addAll(fallbackHits.stream().map(SearchHit::getContent).collect(Collectors.toList()));
+    }
+
+    return results;
   }
 
   private void addSpecFilter(BoolQuery.Builder boolQuery, String key, String value) {
@@ -620,6 +675,9 @@ public class ProductSearchService {
       return null;
     }
     String normalized = phoneName;
+    normalized = normalized.replaceAll("(?i)điện thoại", " ");
+    normalized = normalized.replaceAll("(?i)chính hãng", " ");
+    normalized = normalized.replaceAll("(?i)apple|samsung|xiaomi|oppo|vivo|realme|nokia|huawei|asus", " ");
     normalized = normalized.replaceAll("\\(.*?\\)", " ");
     normalized = normalized.replaceAll("(?i)\\b\\d+\\s?(gb|tb)\\b", " ");
     normalized = normalized.replaceAll("\\s+", " ").trim();
