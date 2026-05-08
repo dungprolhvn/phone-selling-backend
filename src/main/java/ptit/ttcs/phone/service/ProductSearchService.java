@@ -1,8 +1,12 @@
 package ptit.ttcs.phone.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
@@ -158,6 +162,47 @@ public class ProductSearchService {
     return hits.stream()
         .map(SearchHit::getContent)
         .collect(Collectors.toList());
+  }
+
+  public List<ProductDocument> searchCrossSellForPhone(Product phone, int k, List<Integer> excludeIds) {
+    if (phone == null || k <= 0) {
+      return List.of();
+    }
+
+    Set<Integer> excludeSet = new HashSet<>();
+    if (excludeIds != null) {
+      excludeSet.addAll(excludeIds);
+    }
+    if (phone.getId() != null) {
+      excludeSet.add(phone.getId());
+    }
+
+    List<ProductDocument> combined = new ArrayList<>();
+    combined.addAll(searchCaseRecommendations(phone, k, excludeSet));
+
+    if (combined.size() < k) {
+      combined.addAll(searchPowerAccessoryRecommendations(phone, k - combined.size(), excludeSet));
+    }
+
+    Map<String, ProductDocument> deduped = new LinkedHashMap<>();
+    for (ProductDocument doc : combined) {
+      if (doc == null) {
+        continue;
+      }
+      Integer mysqlId = doc.getMysqlId();
+      if (mysqlId != null && excludeSet.contains(mysqlId)) {
+        continue;
+      }
+      deduped.putIfAbsent(doc.getId(), doc);
+      if (mysqlId != null) {
+        excludeSet.add(mysqlId);
+      }
+      if (deduped.size() >= k) {
+        break;
+      }
+    }
+
+    return new ArrayList<>(deduped.values());
   }
 
   // ── QUERY BUILDER ─────────────────────────────────────────
@@ -419,6 +464,71 @@ public class ProductSearchService {
     return doc;
   }
 
+  private List<ProductDocument> searchCaseRecommendations(Product phone, int k, Set<Integer> excludeIds) {
+    if (k <= 0) {
+      return List.of();
+    }
+
+    BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+    addTypeFilter(boolQuery, List.of("CASE"));
+    addMustNotIds(boolQuery, excludeIds);
+
+    boolean hasShould = false;
+    String phoneName = normalizePhoneNameForAccessory(phone.getName());
+    if (phoneName != null) {
+      boolQuery.should(s -> s
+        .match(m -> m
+          .field("name")
+          .query(phoneName)
+          .minimumShouldMatch("60%")
+          .boost(4.0f)
+        )
+      );
+      boolQuery.should(s -> s
+        .wildcard(w -> w
+          .field("specs.compatibleWith")
+          .value("*" + phoneName + "*")
+          .caseInsensitive(true)
+          .boost(5.0f)
+        )
+      );
+      hasShould = true;
+    }
+
+    if (hasShould) {
+      boolQuery.minimumShouldMatch("1");
+    }
+
+    return executeSearch(boolQuery, k);
+  }
+
+  private List<ProductDocument> searchPowerAccessoryRecommendations(Product phone, int k, Set<Integer> excludeIds) {
+    if (k <= 0) {
+      return List.of();
+    }
+
+    Map<String, Object> specs = phone.getSpecs() != null ? phone.getSpecs() : Map.of();
+    String chargingPower = getFirstSpec(specs, "Công suất sạc", "Công suất");
+    String outputCurrent = getFirstSpec(specs, "Dòng điện ra", "Dòng điện");
+    String output = getSpec(specs, "Đầu ra");
+
+    BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+    addTypeFilter(boolQuery, List.of("CHARGER", "CABLE"));
+    addMustNotIds(boolQuery, excludeIds);
+
+    boolean hasShould = false;
+    hasShould |= addShouldTerm(boolQuery, "specs.chargingPower", chargingPower, 5.0f);
+    hasShould |= addShouldTerm(boolQuery, "specs.outputCurrent", outputCurrent, 3.0f);
+    hasShould |= addShouldTerm(boolQuery, "specs.output", output, 2.0f);
+
+    if (!hasShould) {
+      return List.of();
+    }
+
+    boolQuery.minimumShouldMatch("1");
+    return executeSearch(boolQuery, k);
+  }
+
   private void addSpecFilter(BoolQuery.Builder boolQuery, String key, String value) {
     if (value == null || value.isBlank()) {
       return;
@@ -429,6 +539,54 @@ public class ProductSearchService {
             .value(value)
         )
     );
+  }
+
+  private void addTypeFilter(BoolQuery.Builder boolQuery, List<String> types) {
+    if (types == null || types.isEmpty()) {
+      return;
+    }
+    if (types.size() == 1) {
+      String type = types.get(0);
+      boolQuery.filter(f -> f
+          .term(t -> t
+              .field("type")
+              .value(type)
+          )
+      );
+      return;
+    }
+
+    boolQuery.filter(f -> f
+        .bool(b -> {
+          for (String type : types) {
+            b.should(s -> s
+                .term(t -> t
+                    .field("type")
+                    .value(type)
+                )
+            );
+          }
+          b.minimumShouldMatch("1");
+          return b;
+        })
+    );
+  }
+
+  private void addMustNotIds(BoolQuery.Builder boolQuery, Set<Integer> excludeIds) {
+    if (excludeIds == null || excludeIds.isEmpty()) {
+      return;
+    }
+    for (Integer id : excludeIds) {
+      if (id == null) {
+        continue;
+      }
+      boolQuery.mustNot(mn -> mn
+          .term(t -> t
+              .field("mysqlId")
+              .value(id)
+          )
+      );
+    }
   }
 
   private void putSpec(Map<String, String> target, String key, String value) {
@@ -457,6 +615,17 @@ public class ProductSearchService {
     return null;
   }
 
+  private String normalizePhoneNameForAccessory(String phoneName) {
+    if (phoneName == null) {
+      return null;
+    }
+    String normalized = phoneName;
+    normalized = normalized.replaceAll("\\(.*?\\)", " ");
+    normalized = normalized.replaceAll("(?i)\\b\\d+\\s?(gb|tb)\\b", " ");
+    normalized = normalized.replaceAll("\\s+", " ").trim();
+    return normalized.isEmpty() ? null : normalized;
+  }
+
   private boolean addShouldTerm(BoolQuery.Builder boolQuery, String field, String value, float boost) {
     if (value == null || value.isBlank()) {
       return false;
@@ -469,6 +638,17 @@ public class ProductSearchService {
         )
     );
     return true;
+  }
+
+  private List<ProductDocument> executeSearch(BoolQuery.Builder boolQuery, int k) {
+    Query searchQuery = NativeQuery.builder()
+        .withQuery(boolQuery.build()._toQuery())
+        .withPageable(PageRequest.of(0, k))
+        .build();
+    SearchHits<ProductDocument> hits = elasticsearchOperations.search(searchQuery, ProductDocument.class);
+    return hits.stream()
+        .map(SearchHit::getContent)
+        .collect(Collectors.toList());
   }
   
 }

@@ -4,11 +4,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import ptit.ttcs.phone.document.ProductDocument;
 import ptit.ttcs.phone.dto.Cart;
 import ptit.ttcs.phone.service.CartService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -40,6 +42,15 @@ public class CartController {
       @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
       Authentication authentication) {
     return ResponseEntity.ok(cartService.getCart(authentication, guestId));
+  }
+
+  @GetMapping("/recommendations")
+  public ResponseEntity<List<ProductDocument>> getCartRecommendations(
+      @RequestHeader(value = "X-Guest-Id", required = false) String guestId,
+      @RequestParam(value = "limit", defaultValue = "10") int limit,
+      Authentication authentication
+  ) {
+    return ResponseEntity.ok(cartService.getCartRecommendations(authentication, guestId, limit));
   }
   
 }
