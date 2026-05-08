@@ -7,6 +7,7 @@ import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import ptit.ttcs.phone.document.ProductDocument;
 
 @Getter
 @AllArgsConstructor
@@ -24,4 +25,5 @@ public class ProductDetailResponse {
   private Integer stockAvailable;
   private Double averageRating;
   private List<RatingResponse> reviews;
+  private List<ProductDocument> relatedProducts;
 }

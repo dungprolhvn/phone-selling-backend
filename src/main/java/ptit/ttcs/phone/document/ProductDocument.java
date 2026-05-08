@@ -6,6 +6,8 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
+import java.util.Map;
+
 @Document(indexName = "products")
 @Getter
 @Setter
@@ -34,6 +36,10 @@ public class ProductDocument {
   
   @Field(type = FieldType.Text, analyzer = "standard")
   private String description;  // full-text searchable
+
+  // Dynamic specs for all product types
+  @Field(type = FieldType.Flattened)
+  private Map<String, String> specs;
   
   // Specs stored as flat keyword fields for filtering
   @Field(type = FieldType.Keyword)

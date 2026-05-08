@@ -1,6 +1,7 @@
 package ptit.ttcs.phone.service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import ptit.ttcs.phone.document.ProductDocument;
 import ptit.ttcs.phone.dto.ProductDetailResponse;
 import ptit.ttcs.phone.dto.RatingResponse;
 import ptit.ttcs.phone.entity.Product;
@@ -46,6 +48,7 @@ public class ProductDetailService {
   
   private static final Duration PRODUCT_DETAIL_CACHE_TTL = Duration.ofMinutes(10);
 
+  private final ProductSearchService productSearchService;
   private final ProductRepository productRepository;
   private final RatingService ratingService;
   private final RedisTemplate<String, String> redisTemplate;
@@ -73,6 +76,8 @@ public class ProductDetailService {
         .average()
         .orElse(0.0);
 
+    List<ProductDocument> relatedProducts = productSearchService.searchTopKSimilar(product, 10);
+    
     ProductDetailResponse response = new ProductDetailResponse(
         product.getId(),
         product.getName(),
@@ -86,7 +91,8 @@ public class ProductDetailService {
         product.getStockAvailable() > 0,
         product.getStockAvailable(),
         averageRating,
-        reviews
+        reviews,
+        relatedProducts
     );
 
     try {

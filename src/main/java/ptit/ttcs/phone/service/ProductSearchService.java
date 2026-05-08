@@ -1,5 +1,6 @@
 package ptit.ttcs.phone.service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,6 +50,116 @@ public class ProductSearchService {
         .collect(Collectors.toList());
   }
   
+  public List<ProductDocument> searchTopKSimilar(Product p, int k) {
+    if (p == null || k <= 0) {
+      return List.of();
+    }
+
+    BoolQuery.Builder boolQuery = new BoolQuery.Builder();
+
+    if (p.getType() != null) {
+      boolQuery.filter(f -> f
+          .term(t -> t
+              .field("type")
+              .value(p.getType().name())
+          )
+      );
+    }
+
+    if (p.getId() != null) {
+      boolQuery.mustNot(mn -> mn
+          .term(t -> t
+              .field("mysqlId")
+              .value(p.getId())
+          )
+      );
+    }
+
+    if (p.getBasePrice() != null) {
+      double basePrice = p.getBasePrice().doubleValue();
+      double minPrice = Math.max(0, basePrice - 500000);
+      double maxPrice = basePrice + 500000;
+      boolQuery.filter(f -> f
+          .range(r -> r
+              .untyped(u -> u
+                  .field("basePrice")
+                  .gte(JsonData.of(minPrice))
+                  .lte(JsonData.of(maxPrice))
+              )
+          )
+      );
+    }
+
+    Map<String, Object> specs = p.getSpecs() != null ? p.getSpecs() : Map.of();
+    boolean hasShould = false;
+
+    String ram = getSpec(specs, "Dung lượng RAM");
+    hasShould |= addShouldTerm(boolQuery, "ram", ram, 5.0f);
+
+    String storage = getSpec(specs, "Bộ nhớ trong");
+    hasShould |= addShouldTerm(boolQuery, "storage", storage, 4.5f);
+
+    String chipset = getSpec(specs, "Chipset");
+    hasShould |= addShouldTerm(boolQuery, "chipset", chipset, 4.0f);
+
+    String cpuType = getSpec(specs, "Loại CPU");
+    hasShould |= addShouldTerm(boolQuery, "cpuType", cpuType, 3.5f);
+
+    String screenType = getSpec(specs, "Công nghệ màn hình");
+    hasShould |= addShouldTerm(boolQuery, "screenType", screenType, 2.0f);
+
+    String os = getSpec(specs, "Hệ điều hành");
+    hasShould |= addShouldTerm(boolQuery, "os", os, 1.5f);
+
+    String battery = getSpec(specs, "Pin");
+    hasShould |= addShouldTerm(boolQuery, "battery", battery, 1.2f);
+
+    if (p.getType() != null) {
+      String type = p.getType().name();
+      if ("CHARGER".equals(type) || "CABLE".equals(type)) {
+        String chargingPower = getSpec(specs, "Công suất sạc");
+        hasShould |= addShouldTerm(boolQuery, "specs.chargingPower", chargingPower, 4.0f);
+
+        String input = getSpec(specs, "Đầu vào");
+        hasShould |= addShouldTerm(boolQuery, "specs.input", input, 2.0f);
+
+        String output = getSpec(specs, "Đầu ra");
+        hasShould |= addShouldTerm(boolQuery, "specs.output", output, 2.0f);
+
+        String maxUsage = getSpec(specs, "Sử dụng tối đa");
+        hasShould |= addShouldTerm(boolQuery, "specs.maxUsage", maxUsage, 1.5f);
+      }
+
+      if ("CASE".equals(type)) {
+        String compatibleWith = getSpec(specs, "Dùng được cho");
+        hasShould |= addShouldTerm(boolQuery, "specs.compatibleWith", compatibleWith, 3.0f);
+
+        String caseType = getSpec(specs, "Phân loại ốp");
+        hasShould |= addShouldTerm(boolQuery, "specs.caseType", caseType, 2.5f);
+
+        String material = getSpec(specs, "Chất liệu");
+        hasShould |= addShouldTerm(boolQuery, "specs.material", material, 2.0f);
+
+        String productLine = getSpec(specs, "Dòng sản phẩm");
+        hasShould |= addShouldTerm(boolQuery, "specs.productLine", productLine, 1.5f);
+      }
+    }
+
+    if (hasShould) {
+      boolQuery.minimumShouldMatch("1");
+    }
+
+    Query searchQuery = NativeQuery.builder()
+        .withQuery(boolQuery.build()._toQuery())
+        .withPageable(PageRequest.of(0, k))
+        .build();
+
+    SearchHits<ProductDocument> hits = elasticsearchOperations.search(searchQuery, ProductDocument.class);
+    return hits.stream()
+        .map(SearchHit::getContent)
+        .collect(Collectors.toList());
+  }
+
   // ── QUERY BUILDER ─────────────────────────────────────────
   private Query buildSearchQuery(ProductSearchRequest request) {
     
@@ -114,45 +225,32 @@ public class ProductSearchService {
       );
     }
     
-    // 6. Filter by storage
-    if (request.getStorage() != null) {
-      boolQuery.filter(f -> f
-          .term(t -> t
-              .field("storage")
-              .value(request.getStorage())
-          )
-      );
-    }
-    
-    // 7. Filter by RAM
-    if (request.getRam() != null) {
-      boolQuery.filter(f -> f
-          .term(t -> t
-              .field("ram")
-              .value(request.getRam())
-          )
-      );
-    }
-    
-    // 8. Filter by screen type
-    if (request.getScreenType() != null) {
-      boolQuery.filter(f -> f
-          .term(t -> t
-              .field("screenType")
-              .value(request.getScreenType())
-          )
-      );
-    }
-    
-    // 9. Filter by scan frequency
-    if (request.getScanFrequency() != null) {
-      boolQuery.filter(f -> f
-          .term(t -> t
-              .field("scanFrequency")
-              .value(request.getScanFrequency())
-          )
-      );
-    }
+    // 6. Filter by phone specs (backward-compatible params)
+    addSpecFilter(boolQuery, "storage", request.getStorage());
+    addSpecFilter(boolQuery, "ram", request.getRam());
+    addSpecFilter(boolQuery, "screenType", request.getScreenType());
+    addSpecFilter(boolQuery, "scanFrequency", request.getScanFrequency());
+
+    // 7. Filter by accessory specs
+    addSpecFilter(boolQuery, "cableType", request.getCableType());
+    addSpecFilter(boolQuery, "certification", request.getCertification());
+    addSpecFilter(boolQuery, "input", request.getInput());
+    addSpecFilter(boolQuery, "output", request.getOutput());
+    addSpecFilter(boolQuery, "maxUsage", request.getMaxUsage());
+    addSpecFilter(boolQuery, "cableLength", request.getCableLength());
+    addSpecFilter(boolQuery, "manufacturer", request.getManufacturer());
+    addSpecFilter(boolQuery, "material", request.getMaterial());
+    addSpecFilter(boolQuery, "chargingPower", request.getChargingPower());
+    addSpecFilter(boolQuery, "contentQuality", request.getContentQuality());
+    addSpecFilter(boolQuery, "function", request.getFunction());
+    addSpecFilter(boolQuery, "utility", request.getUtility());
+    addSpecFilter(boolQuery, "inputCurrent", request.getInputCurrent());
+    addSpecFilter(boolQuery, "outputCurrent", request.getOutputCurrent());
+    addSpecFilter(boolQuery, "caseType", request.getCaseType());
+    addSpecFilter(boolQuery, "compatibleWith", request.getCompatibleWith());
+    addSpecFilter(boolQuery, "dimensions", request.getDimensions());
+    addSpecFilter(boolQuery, "productLine", request.getProductLine());
+    addSpecFilter(boolQuery, "features", request.getFeatures());
     
     // Bridge the Elasticsearch Client query into the Spring Data NativeQuery
     return NativeQuery.builder()
@@ -216,32 +314,102 @@ public class ProductSearchService {
     // Extract spec fields from JSON
     if (product.getSpecs() != null) {
       Map<String, Object> specs = product.getSpecs();
-      doc.setStorage((String) specs.get("Bộ nhớ trong"));
-      doc.setRearCamera((String) specs.get("Camera sau"));
-      doc.setFrontCamera((String) specs.get("Camera trước"));
-      doc.setChipset((String) specs.get("Chipset"));
-      doc.setNfc((String) specs.get("Công nghệ NFC"));
-      doc.setScreenType((String) specs.get("Công nghệ màn hình"));
-      Object scanFrequency = specs.get("Tần số quét");
-      if (scanFrequency == null) {
-        scanFrequency = specs.get("Tần số quét màn hình");
-      }
-      if (scanFrequency == null) {
-        scanFrequency = specs.get("Refresh rate");
-      }
-      if (scanFrequency != null) {
-        doc.setScanFrequency(String.valueOf(scanFrequency));
-      }
-      doc.setSensor((String) specs.get("Cảm biến"));
-      doc.setRam((String) specs.get("Dung lượng RAM"));
-      doc.setOs((String) specs.get("Hệ điều hành"));
-      doc.setScreenSize((String) specs.get("Kích thước màn hình"));
-      doc.setCpuType((String) specs.get("Loại CPU"));
-      doc.setBattery((String) specs.get("Pin"));
-      doc.setSim((String) specs.get("Thẻ SIM"));
-      doc.setScreenFeatures((String) specs.get("Tính năng màn hình"));
-      doc.setCompatibility((String) specs.get("Tương thích"));
-      doc.setScreenResolution((String) specs.get("Độ phân giải màn hình"));
+      Map<String, String> normalizedSpecs = new HashMap<>();
+
+      String storage = getSpec(specs, "Bộ nhớ trong");
+      putSpec(normalizedSpecs, "storage", storage);
+      doc.setStorage(storage);
+
+      String rearCamera = getSpec(specs, "Camera sau");
+      putSpec(normalizedSpecs, "rearCamera", rearCamera);
+      doc.setRearCamera(rearCamera);
+
+      String frontCamera = getSpec(specs, "Camera trước");
+      putSpec(normalizedSpecs, "frontCamera", frontCamera);
+      doc.setFrontCamera(frontCamera);
+
+      String chipset = getSpec(specs, "Chipset");
+      putSpec(normalizedSpecs, "chipset", chipset);
+      doc.setChipset(chipset);
+
+      String nfc = getSpec(specs, "Công nghệ NFC");
+      putSpec(normalizedSpecs, "nfc", nfc);
+      doc.setNfc(nfc);
+
+      String screenType = getSpec(specs, "Công nghệ màn hình");
+      putSpec(normalizedSpecs, "screenType", screenType);
+      doc.setScreenType(screenType);
+
+      String scanFrequency = getFirstSpec(specs,
+          "Tần số quét",
+          "Tần số quét màn hình",
+          "Refresh rate"
+      );
+      putSpec(normalizedSpecs, "scanFrequency", scanFrequency);
+      doc.setScanFrequency(scanFrequency);
+
+      String sensor = getSpec(specs, "Cảm biến");
+      putSpec(normalizedSpecs, "sensor", sensor);
+      doc.setSensor(sensor);
+
+      String ram = getSpec(specs, "Dung lượng RAM");
+      putSpec(normalizedSpecs, "ram", ram);
+      doc.setRam(ram);
+
+      String os = getSpec(specs, "Hệ điều hành");
+      putSpec(normalizedSpecs, "os", os);
+      doc.setOs(os);
+
+      String screenSize = getSpec(specs, "Kích thước màn hình");
+      putSpec(normalizedSpecs, "screenSize", screenSize);
+      doc.setScreenSize(screenSize);
+
+      String cpuType = getSpec(specs, "Loại CPU");
+      putSpec(normalizedSpecs, "cpuType", cpuType);
+      doc.setCpuType(cpuType);
+
+      String battery = getSpec(specs, "Pin");
+      putSpec(normalizedSpecs, "battery", battery);
+      doc.setBattery(battery);
+
+      String sim = getSpec(specs, "Thẻ SIM");
+      putSpec(normalizedSpecs, "sim", sim);
+      doc.setSim(sim);
+
+      String screenFeatures = getSpec(specs, "Tính năng màn hình");
+      putSpec(normalizedSpecs, "screenFeatures", screenFeatures);
+      doc.setScreenFeatures(screenFeatures);
+
+      String compatibility = getSpec(specs, "Tương thích");
+      putSpec(normalizedSpecs, "compatibility", compatibility);
+      doc.setCompatibility(compatibility);
+
+      String screenResolution = getSpec(specs, "Độ phân giải màn hình");
+      putSpec(normalizedSpecs, "screenResolution", screenResolution);
+      doc.setScreenResolution(screenResolution);
+
+      // Accessory specs
+      putSpec(normalizedSpecs, "cableType", getSpec(specs, "Loại cáp sạc"));
+      putSpec(normalizedSpecs, "certification", getSpec(specs, "Công nghệ/Đạt chứng nhận"));
+      putSpec(normalizedSpecs, "input", getSpec(specs, "Đầu vào"));
+      putSpec(normalizedSpecs, "output", getSpec(specs, "Đầu ra"));
+      putSpec(normalizedSpecs, "maxUsage", getSpec(specs, "Sử dụng tối đa"));
+      putSpec(normalizedSpecs, "cableLength", getSpec(specs, "Chiều dài dây"));
+      putSpec(normalizedSpecs, "manufacturer", getSpec(specs, "Hãng sản xuất"));
+      putSpec(normalizedSpecs, "material", getSpec(specs, "Chất liệu"));
+      putSpec(normalizedSpecs, "chargingPower", getSpec(specs, "Công suất sạc"));
+      putSpec(normalizedSpecs, "contentQuality", getSpec(specs, "Chất lượng nội dung"));
+      putSpec(normalizedSpecs, "function", getSpec(specs, "Chức năng"));
+      putSpec(normalizedSpecs, "utility", getSpec(specs, "Tiện ích"));
+      putSpec(normalizedSpecs, "inputCurrent", getSpec(specs, "Dòng điện vào"));
+      putSpec(normalizedSpecs, "outputCurrent", getSpec(specs, "Dòng điện ra"));
+      putSpec(normalizedSpecs, "caseType", getSpec(specs, "Phân loại ốp"));
+      putSpec(normalizedSpecs, "compatibleWith", getSpec(specs, "Dùng được cho"));
+      putSpec(normalizedSpecs, "dimensions", getSpec(specs, "Kích thước"));
+      putSpec(normalizedSpecs, "productLine", getSpec(specs, "Dòng sản phẩm"));
+      putSpec(normalizedSpecs, "features", getSpec(specs, "Tính năng"));
+
+      doc.setSpecs(normalizedSpecs);
     }
     
     // First image for display in search results
@@ -249,6 +417,58 @@ public class ProductSearchService {
       doc.setImageUrl((String) product.getImageUrls().get(0));
     }
     return doc;
+  }
+
+  private void addSpecFilter(BoolQuery.Builder boolQuery, String key, String value) {
+    if (value == null || value.isBlank()) {
+      return;
+    }
+    boolQuery.filter(f -> f
+        .term(t -> t
+            .field("specs." + key)
+            .value(value)
+        )
+    );
+  }
+
+  private void putSpec(Map<String, String> target, String key, String value) {
+    if (value == null || value.isBlank()) {
+      return;
+    }
+    target.put(key, value);
+  }
+
+  private String getSpec(Map<String, Object> specs, String key) {
+    Object value = specs.get(key);
+    if (value == null) {
+      return null;
+    }
+    String text = String.valueOf(value).trim();
+    return text.isEmpty() ? null : text;
+  }
+
+  private String getFirstSpec(Map<String, Object> specs, String... keys) {
+    for (String key : keys) {
+      String value = getSpec(specs, key);
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private boolean addShouldTerm(BoolQuery.Builder boolQuery, String field, String value, float boost) {
+    if (value == null || value.isBlank()) {
+      return false;
+    }
+    boolQuery.should(s -> s
+        .term(t -> t
+            .field(field)
+            .value(value)
+            .boost(boost)
+        )
+    );
+    return true;
   }
   
 }
